@@ -1,0 +1,395 @@
+
+
+/* person.css */
+
+:root {
+    /* Base Sizes (Halved from original 140px base) */
+    --person-figure-size: 70px;
+    --person-figure-padding-vertical: 6px;
+    --person-figure-padding-horizontal: 4px;
+    --person-figure-border-radius: 6px;
+    --person-figure-border-width: 2px;
+    --person-other-border-thickness: 2px;
+
+    /* Text Colors (Light Mode) */
+    --person-name-color: #2c3e50;
+    --person-age-color: #34495e;
+    --person-note-color: #95a5a6;
+    --person-deceased-x-color: #7f8c8d;
+
+    /* Shape Colors (Light Mode) */
+    --person-male-bg: #a9d1f7;
+    --person-male-border: #6caddf;
+    --person-female-bg: #f9c5d1;
+    --person-female-border: #f190a7;
+    --person-other-bg: #a2e8c3;
+    --person-other-border: #52a880;
+
+    /* Proband Colors (Light Mode) */
+    --person-proband-bg: #fdebd0;
+    --person-proband-border: #f5b041;
+    --person-proband-name-color: #b96705;
+    --person-proband-age-color: #c7791e;
+
+    /* Tooltip & Canvas BG (Light Mode) */
+    --person-tooltip-bg: #34495e;
+    --person-tooltip-text-color: #ecf0f1;
+    --canvas-bg-color: #f4f6f8; /* Main canvas background */
+
+    /* Zoom Controls (Light Mode) */
+    --zoom-button-bg: #ffffff;
+    --zoom-button-border: #cccccc;
+    --zoom-button-text: #333333;
+    --zoom-button-hover-bg: #f0f0f0;
+    --zoom-button-active-bg: #e0e0e0;
+
+    /* Highlight filter */
+    --highlight-saturate-filter: saturate(170%) brightness(90%);
+}
+
+body.dark-mode {
+    /* Text Colors (Dark Mode) */
+    --person-name-color: #ecf0f1;
+    --person-age-color: #d2d7db;
+    --person-note-color: #7f8c8d;
+    --person-deceased-x-color: #95a5a6;
+
+    /* Shape Colors (Dark Mode) */
+    --person-male-bg: #2c5f85;
+    --person-male-border: #5499c7;
+    --person-female-bg: #a32e47;
+    --person-female-border: #d96c82;
+    --person-other-bg: #1e8449;
+    --person-other-border: #3ab579;
+
+    /* Proband Colors (Dark Mode) */
+    --person-proband-bg: #b96705;
+    --person-proband-border: #f39c12;
+    --person-proband-name-color: #fdebd0;
+    --person-proband-age-color: #fdebd0;
+
+    /* Tooltip & Canvas BG (Dark Mode) */
+    --person-tooltip-bg: #ecf0f1;
+    --person-tooltip-text-color: #2c3e50;
+    --canvas-bg-color: #2f2f2f;
+
+    /* Zoom Controls (Dark Mode) */
+    --zoom-button-bg: #444444;
+    --zoom-button-border: #666666;
+    --zoom-button-text: #dddddd;
+    --zoom-button-hover-bg: #555555;
+    --zoom-button-active-bg: #333333;
+
+    /* Highlight filter for dark mode - might need adjustment if default colors are already dark */
+    --highlight-saturate-filter: saturate(160%) brightness(110%);
+}
+
+/* Canvas Zoom Controls Container */
+#canvas-zoom-controls {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: var(--zoom-button-bg);
+    padding: 5px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    z-index: 100;
+    display: flex;
+    gap: 5px;
+}
+
+.zoom-btn {
+    background-color: var(--zoom-button-bg);
+    border: 1px solid var(--zoom-button-border);
+    color: var(--zoom-button-text);
+    padding: 5px 8px;
+    font-size: 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-width: 30px;
+    text-align: center;
+}
+.zoom-btn:hover { background-color: var(--zoom-button-hover-bg); }
+.zoom-btn:active { background-color: var(--zoom-button-active-bg); }
+
+/* Main Canvas Container */
+#family-tree-container {
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 200px; 
+    height: 100%; 
+    background-color: var(--canvas-bg-color);
+    border-radius: 8px;
+    overflow: hidden; 
+    position: relative; 
+    width: 100%;
+    cursor: grab; 
+}
+#family-tree-container.is-dragging {
+    cursor: grabbing;
+}
+
+/* Wrapper for scaling AND panning content */
+#family-tree-scalable-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; 
+    align-items: flex-start; 
+    gap: 5px;
+    padding: 50vh 50vw; 
+    transform-origin: center center; 
+    transition: transform 0.3s ease-out; 
+    position: relative; 
+}
+
+
+.person-figure {
+    width: var(--person-figure-size);
+    height: var(--person-figure-size);
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    overflow: hidden; /* Important for child overlays and clip-paths */
+    border-width: var(--person-figure-border-width);
+    border-style: solid;
+    border-radius: var(--person-figure-border-radius);
+    /* z-index: 0; Default, let children define stacking */
+    padding: var(--person-figure-padding-vertical) var(--person-figure-padding-horizontal);
+    user-select: none; 
+    -webkit-user-select: none; 
+    -moz-user-select: none; 
+    -ms-user-select: none; 
+}
+.person-figure * { 
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+
+.person-figure:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+/* Default Gender Styles */
+.person-figure.male {
+    background-color: var(--person-male-bg);
+    border-color: var(--person-male-border);
+}
+.person-figure.female {
+    background-color: var(--person-female-bg);
+    border-color: var(--person-female-border);
+    border-radius: 50%;
+}
+
+.person-figure.other {
+    background-color: var(--person-other-bg); /* This will be the inner color */
+    clip-path: polygon(50% 5%, 0% 95%, 100% 95%);
+    border: none; /* Border is handled by ::before */
+    border-radius: 0;
+    padding: 0; /* Remove padding, border thickness handled by position of content */
+                /* Or use padding to push content inside the ::before border */
+}
+.person-figure.other::before { /* This is the border for 'other' */
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--person-other-border);
+    clip-path: polygon(50% 5%, 0% 95%, 100% 95%);
+    z-index: -1; /* Behind the main background/content of .person-figure.other */
+    border-radius: 0;
+}
+/* Adjust content position for .other to be inside the drawn border */
+.person-figure.other .person-name,
+.person-figure.other .person-age {
+    /* Push text content slightly inward to respect the border drawn by ::before */
+    /* This depends on how thick --person-other-border-thickness is visually */
+    /* May need dynamic calculation or fixed values based on perception */
+    padding-top: calc(var(--person-other-border-thickness) + 3px); /* Example adjustment */
+}
+
+
+/* Proband Overrides */
+.person-figure.is-proband {
+    background-color: var(--person-proband-bg) !important;
+    border-color: var(--person-proband-border) !important;
+}
+.person-figure.other.is-proband::before {
+    background-color: var(--person-proband-border) !important;
+}
+.person-figure.is-proband .person-name {
+    color: var(--person-proband-name-color) !important;
+}
+.person-figure.is-proband .person-age {
+     color: var(--person-proband-age-color) !important;
+}
+
+/* Text styling - common */
+.person-name, .person-age, .person-note-preview {
+    position: relative; /* To stack above overlays */
+    z-index: 2;
+    pointer-events: none; /* So tooltips on parent figure still work */
+}
+
+.person-name {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--person-name-color);
+    width: 95%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    margin-bottom: 7px;
+}
+.person-age {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--person-age-color);
+    line-height: 1.1;
+    margin-bottom: 2px;
+}
+.person-note-preview {
+    font-size: 7px;
+    color: var(--person-note-color);
+    width: 95%;
+    line-height: 1.1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    margin-bottom: 0;
+}
+
+/* Layout for TRIANGLE (Other) */
+.person-figure.other {
+    justify-content: center; /* vertical align after flex-direction column */
+    align-items: center;   /* horizontal align after flex-direction column */
+    padding-bottom: 5px; /* Adjust text position slightly up from bottom point */
+}
+.person-figure.other .person-age {
+    order: 1;
+    font-size: 8px;
+    margin-top: calc(var(--person-figure-size) * 0.25); /* Push down from top point */
+    margin-bottom: 2px;
+}
+.person-figure.other .person-name {
+    order: 2;
+    font-size: 7px;
+    margin-bottom: 0;
+}
+.person-figure.other .person-note-preview { display: none; }
+
+/* Desaturation for deceased */
+.person-figure.desaturated { filter: saturate(35%) brightness(95%); }
+
+/* Deceased X mark */
+.deceased-x {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; justify-content: center; align-items: center;
+    pointer-events: none;
+    z-index: 3; /* Above text and overlays */
+}
+.deceased-x::before, .deceased-x::after {
+    content: '';
+    position: absolute;
+    width: 60%;
+    height: 2px;
+    background-color: var(--person-deceased-x-color);
+    border-radius: 1px;
+}
+.person-figure.female .deceased-x::before, .person-figure.female .deceased-x::after { width: 50%; }
+.person-figure.other .deceased-x::before, .person-figure.other .deceased-x::after { width: 45%; }
+.deceased-x::before { transform: rotate(45deg); }
+.deceased-x::after { transform: rotate(-45deg); }
+
+
+/* --- Highlight Overlays for Chronic/Disability --- */
+.highlight-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Allow clicks to pass through to the main figure for tooltips */
+    z-index: 1; /* Above base background, below text and deceased X */
+    filter: var(--highlight-saturate-filter);
+}
+
+/* Assign background color to overlays based on gender/proband status */
+.person-figure.male .highlight-overlay {
+    background-color: var(--person-male-bg);
+    border-radius: var(--person-figure-border-radius); /* Match parent shape */
+}
+.person-figure.female .highlight-overlay {
+    background-color: var(--person-female-bg);
+    border-radius: 50%; /* Match parent shape */
+}
+.person-figure.other .highlight-overlay {
+    background-color: var(--person-other-bg);
+    /* No border-radius needed, parent .person-figure.other has clip-path */
+    /* Adjust for border if needed for 'other' */
+    top: var(--person-other-border-thickness);
+    left: var(--person-other-border-thickness);
+    width: calc(100% - (2 * var(--person-other-border-thickness)));
+    height: calc(100% - (2 * var(--person-other-border-thickness)));
+}
+
+/* Proband status overrides overlay background color */
+.person-figure.is-proband.male .highlight-overlay,
+.person-figure.is-proband.female .highlight-overlay,
+.person-figure.is-proband.other .highlight-overlay {
+    background-color: var(--person-proband-bg) !important; /* Important to override gender default */
+}
+
+
+/* Clip paths for Chronic (top-right quadrant) */
+.person-figure .chronic-highlight { /* Default for square/circle */
+    clip-path: polygon(50% 0%, 100% 0%, 100% 50%, 50% 50%);
+}
+
+/* Corrected clip-path for 'other' (triangle) for chronic highlight */
+.person-figure.other .chronic-highlight {
+    /* This polygon defines a triangular area in the top-right portion of the main triangle overlay */
+    /* Points are: 1. Top vertex, 2. Midpoint of right edge, 3. Centroid approx. */
+    clip-path: polygon(50% 0%, 75% 50%, 50% 66.67%);
+}
+
+/* Clip paths for Disability (right half) - this should be okay but let's review */
+.person-figure .disability-highlight { /* Default for square/circle */
+    clip-path: polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%);
+}
+
+.person-figure.other .disability-highlight {
+    /* This defines the right half of the triangle overlay */
+    /* Points are: 1. Top vertex, 2. Bottom-right vertex, 3. Bottom-center vertex */
+    clip-path: polygon(50% 0%, 100% 100%, 50% 100%);
+}
+
+
+/* Tooltip */
+#person-tooltip {
+    position: fixed;
+    background-color: var(--person-tooltip-bg);
+    color: var(--person-tooltip-text-color);
+    padding: 8px 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    font-size: 11px;
+    z-index: 1000;
+    display: none;
+    pointer-events: none;
+    white-space: pre-wrap;
+    max-width: 250px;
+    line-height: 1.4;
+}

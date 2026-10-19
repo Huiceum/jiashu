@@ -1,0 +1,515 @@
+/* treeSelector.css - 增强互动体验设计 */
+
+/* 全局变量定义 - 提供绿色主题配色方案与直观的命名 */
+:root {
+  /* 亮色模式 */
+  --light-primary: #28a745; /* 主色调 - 绿色 */
+  --light-primary-hover: #218838;
+  --light-primary-active: #1e7e34;
+  --light-primary-light: #d4edda; /* 用于选中项背景等 */
+  --light-primary-dark: #155724;  /* 用于选中项文字等 */
+
+  --light-background: #ffffff;
+  --light-background-secondary: #f8f9fa; /* 面板背景 */
+  --light-background-tertiary: #e9ecef; /* 面板头部背景 */
+
+  --light-text-primary: #212529;
+  --light-text-secondary: #6c757d;
+  --light-text-tertiary: #adb5bd; /* 用于滚动条等次要元素 */
+
+  --light-border: #dee2e6;
+  --light-border-light: #f1f3f5; /* 列表项分隔线 */
+
+  --light-selected-bg: var(--light-primary-light);
+  --light-selected-text: var(--light-primary-dark);
+  --light-hover-bg: #e9ecef; /* 列表项悬停背景 */
+
+  /* 暗色模式 */
+  --dark-primary: #28a745; /* 主色调 - 绿色 */
+  --dark-primary-hover: #2cb74e;
+  --dark-primary-active: #30c653;
+  --dark-primary-light: #1f4b2d; /* 用于选中项背景等 */
+  --dark-primary-dark: #a3d9b1;  /* 用于选中项文字等 */
+
+  --dark-background: #1e1e1e;
+  --dark-background-secondary: #252526; /* 面板背景 */
+  --dark-background-tertiary: #333333; /* 面板头部背景 */
+
+  --dark-text-primary: #d4d4d4;
+  --dark-text-secondary: #a0a0a0;
+  --dark-text-tertiary: #808080; /* 用于滚动条等次要元素 */
+
+  --dark-border: #5a5a5a;
+  --dark-border-light: #444444; /* 列表项分隔线 */
+
+  --dark-selected-bg: var(--dark-primary-light);
+  --dark-selected-text: var(--dark-primary-dark);
+  --dark-hover-bg: #3a3a3a; /* 列表项悬停背景 */
+}
+
+/* 动态应用变量在亮色模式和暗色模式 */
+body:not(.dark-mode) {
+  --primary: var(--light-primary);
+  --primary-hover: var(--light-primary-hover);
+  --primary-active: var(--light-primary-active);
+  --primary-light: var(--light-primary-light);
+  --primary-dark: var(--light-primary-dark);
+
+  --background: var(--light-background);
+  --background-secondary: var(--light-background-secondary);
+  --background-tertiary: var(--light-background-tertiary);
+
+  --text-primary: var(--light-text-primary);
+  --text-secondary: var(--light-text-secondary);
+  --text-tertiary: var(--light-text-tertiary);
+
+  --border: var(--light-border);
+  --border-light: var(--light-border-light);
+
+  --selected-bg: var(--light-selected-bg);
+  --selected-text: var(--light-selected-text);
+  --hover-bg: var(--light-hover-bg);
+}
+
+body.dark-mode {
+  --primary: var(--dark-primary);
+  --primary-hover: var(--dark-primary-hover);
+  --primary-active: var(--dark-primary-active);
+  --primary-light: var(--dark-primary-light);
+  --primary-dark: var(--dark-primary-dark);
+
+  --background: var(--dark-background);
+  --background-secondary: var(--dark-background-secondary);
+  --background-tertiary: var(--dark-background-tertiary);
+
+  --text-primary: var(--dark-text-primary);
+  --text-secondary: var(--dark-text-secondary);
+  --text-tertiary: var(--dark-text-tertiary);
+
+  --border: var(--dark-border);
+  --border-light: var(--dark-border-light);
+
+  --selected-bg: var(--dark-selected-bg);
+  --selected-text: var(--dark-selected-text);
+  --hover-bg: var(--dark-hover-bg);
+}
+
+
+/* 触发按钮样式优化 - 增强交互性 */
+#toggle-tree-selector-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 1002; /* 确保高于Canvas */
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 5px; /* 轻微圆角 */
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  display: block; /* 改为默认显示，避免按钮消失 */
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+}
+
+/* 按钮波纹效果 */
+#toggle-tree-selector-btn:after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.3);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+#toggle-tree-selector-btn:focus:not(:active)::after {
+  animation: ripple 0.5s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0) translate(-50%, -50%);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(20, 20) translate(-50%, -50%);
+    opacity: 0;
+  }
+}
+
+#toggle-tree-selector-btn:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#toggle-tree-selector-btn:active {
+  background-color: var(--primary-active);
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: all 0.1s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 面板容器样式 - 增强资料夹抽出效果 */
+#tree-selector-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 280px; /* 默认宽度，可根据内容调整 */
+  max-height: calc(100% - 20px); /* 确保不会超出父容器高度 */
+  background-color: var(--background-secondary);
+  border-radius: 8px; /* 更明显的圆角 */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* 更柔和的阴影 */
+  z-index: 1005; /* 确保高于toggle button和Canvas */
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  overflow: hidden; /* 确保内容不超出圆角边界，对动画也很重要 */
+  border: 1px solid var(--border);
+
+  /* 资料夹抽出与插入效果 - 大幅增强版 */
+  transform-origin: right center;
+  transform: translateX(60%) rotate(10deg); /* 更大的移动距离和旋转角度 */
+  opacity: 0;
+  visibility: hidden;
+  transition: 
+    transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28), /* 更强的弹性曲线 */
+    opacity 0.3s ease,
+    visibility 0s 0.5s,
+    box-shadow 0.3s ease;
+}
+
+#tree-selector-panel.visible {
+  transform: translateX(0) rotate(0deg); /* 回到原位并移除旋转 */
+  opacity: 1;
+  visibility: visible;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); /* 显示时阴影更强 */
+  transition: 
+    transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), /* 加强弹性感 */
+    opacity 0.3s ease,
+    visibility 0s 0s,
+    box-shadow 0.3s ease;
+}
+
+/* 标题栏样式提升 */
+.tree-selector-header {
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--background-tertiary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; /* 防止在内容过多时缩小 */
+  border-top-left-radius: 8px; /* 匹配面板圆角 */
+  border-top-right-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 标题栏渐变底纹 */
+.tree-selector-header:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0.7;
+}
+
+.tree-selector-header h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  /* 确保标题不会推挤关闭按钮 */
+  flex-grow: 1;
+  padding-right: 10px; /* 标题和关闭按钮间距 */
+  transition: transform 0.2s ease;
+}
+
+.tree-selector-header.visible h4 {
+  transform: translateY(0);
+}
+
+#close-tree-selector-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem; /* 更易点击的尺寸 */
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 5px;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+#close-tree-selector-btn:hover {
+  color: var(--text-primary);
+  background-color: rgba(0, 0, 0, 0.05);
+  transform: rotate(90deg);
+}
+
+#close-tree-selector-btn:active {
+  transform: rotate(90deg) scale(0.9);
+}
+
+/* 列表容器样式优化 */
+#tree-selector-list-container {
+  flex-grow: 1;
+  overflow-y: auto; /* 允许列表内容滚动 */
+  padding: 6px 0; /* 上下留白，左右由列表项控制 */
+
+  /* 自定义滚动条样式 (适用于 Webkit 和 Firefox) */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--text-tertiary) transparent; /* Firefox: thumb track */
+}
+
+/* 仅对WebKit浏览器定制滚动条 */
+#tree-selector-list-container::-webkit-scrollbar {
+  width: 6px;
+  transition: width 0.2s ease;
+}
+
+#tree-selector-list-container:hover::-webkit-scrollbar {
+  width: 8px; /* 悬停时略微增加滚动条宽度 */
+}
+
+#tree-selector-list-container::-webkit-scrollbar-track {
+  background: transparent; /* 使轨道透明 */
+}
+
+#tree-selector-list-container::-webkit-scrollbar-thumb {
+  background-color: var(--text-tertiary);
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
+}
+
+#tree-selector-list-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary); /* 悬停时滚动条颜色更深 */
+}
+
+/* 列表项效果增强 - 更大的动画幅度 */
+#tree-selector-list li {
+  padding: 10px 15px 10px 18px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative; /* 为伪元素定位 */
+  min-height: 30px; /* 确保列表项有最小高度 */
+  display: flex; /* 使内容垂直居中 */
+  align-items: center;
+  transform: translateX(0);
+}
+
+/* 列表项悬停效果增强 */
+#tree-selector-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background-color: var(--primary);
+  transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+#tree-selector-list li:hover {
+  background-color: var(--hover-bg);
+  padding-left: 28px; /* 悬停时文字右移更明显 */
+  transform: translateX(5px); /* 整体右移 */
+}
+
+#tree-selector-list li:hover::before {
+  width: 5px; /* 悬停时左侧指示条更宽 */
+}
+
+/* 列表项点击动画 */
+#tree-selector-list li:active {
+  transform: scale(0.98); /* 轻微缩小以提供反馈 */
+  transition: transform 0.1s ease;
+}
+
+/* 选中项样式 - 更明显的视觉效果 */
+#tree-selector-list li.selected {
+  background-color: var(--selected-bg);
+  color: var(--selected-text);
+  font-weight: 600; /* 加粗选中项文字 */
+  padding-left: 22px; /* 与悬停状态一致 */
+  box-shadow: inset 0 0 0 1px var(--primary-light); /* 内部细边框 */
+}
+
+/* 选中项左侧指示条增强 */
+#tree-selector-list li.selected::before {
+  width: 4px; /* 选中项左侧指示条更宽 */
+  background-color: var(--primary);
+}
+
+/* 进入动画效果 - 列表项级联动画 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#tree-selector-panel.visible #tree-selector-list li {
+  animation: fadeInUp 0.3s ease forwards;
+  opacity: 0;
+}
+
+/* 为每个列表项设置不同的延迟，产生级联效果 */
+#tree-selector-panel.visible #tree-selector-list li:nth-child(1) { animation-delay: 0.05s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(2) { animation-delay: 0.1s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(3) { animation-delay: 0.15s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(4) { animation-delay: 0.2s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(5) { animation-delay: 0.25s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(6) { animation-delay: 0.3s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(7) { animation-delay: 0.35s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(8) { animation-delay: 0.4s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(9) { animation-delay: 0.45s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(10) { animation-delay: 0.5s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(11) { animation-delay: 0.55s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(12) { animation-delay: 0.6s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(13) { animation-delay: 0.65s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(14) { animation-delay: 0.7s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(15) { animation-delay: 0.75s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(16) { animation-delay: 0.8s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(17) { animation-delay: 0.85s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(18) { animation-delay: 0.9s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(19) { animation-delay: 0.95s; }
+#tree-selector-panel.visible #tree-selector-list li:nth-child(20) { animation-delay: 1s; }
+/* 如果需要更多项目，可以继续添加 */
+
+/* 状态显示样式 */
+.tree-selector-status {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border-light);
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#tree-selector-panel.visible .tree-selector-status {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.2s; /* 在列表项之后显示 */
+}
+
+/* 确保容器上下文正确 */
+#family-tree-container {
+  position: relative;
+  overflow: hidden;
+}
+
+/* 暗色模式特定调整 */
+body.dark-mode #tree-selector-panel {
+  border-color: var(--dark-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode #tree-selector-panel.visible {
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.35);
+}
+
+body.dark-mode #close-tree-selector-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* 移动端响应性调整 (针对小屏幕) */
+@media (max-width: 768px) {
+  #tree-selector-panel {
+    width: 220px;
+    right: 5px;
+    top: 5px;
+    max-height: calc(100% - 10px);
+  }
+
+  #toggle-tree-selector-btn {
+    right: 5px;
+    top: 5px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .tree-selector-header h4 {
+    font-size: 0.95rem;
+  }
+
+  #close-tree-selector-btn {
+    font-size: 1.1rem;
+    width: 24px;
+    height: 24px;
+  }
+
+  #tree-selector-list li {
+    padding: 8px 12px 8px 15px;
+    font-size: 0.85rem;
+    min-height: 25px;
+  }
+
+  #tree-selector-list li:hover,
+  #tree-selector-list li.selected {
+    padding-left: 18px; /* 移动端悬停/选中时右移量较小 */
+  }
+
+  .tree-selector-status {
+    padding: 12px;
+    font-size: 0.8rem;
+  }
+}
+
+/* 更小的屏幕（例如 iPhone SE） */
+@media (max-width: 400px) {
+  #tree-selector-panel {
+    width: 180px;
+  }
+  
+  /* 在非常小的屏幕上，允许列表项文字换行 */
+  #tree-selector-list li {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
+
+/* 添加额外的辅助动画 */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* 可以在特定场景（如新增项目时）使用 */
+.tree-selector-highlight {
+  animation: pulse 0.6s ease;
+}

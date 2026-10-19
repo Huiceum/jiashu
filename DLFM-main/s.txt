@@ -1,0 +1,199 @@
+// relationship.js
+// Helper function to assign generations based on parent-child links
+function assignGenerations(personsMap) {
+    const generations = [];
+    const visited = new Set();
+    const queue = []; // Queue for BFS-like traversal
+    const generationMap = new Map(); // To store assigned generation for each person
+
+    // Phase 1: Identify true roots for generation assignment within the current snippet
+    const potentialRoots = [];
+    Object.values(personsMap).forEach(p => {
+        if (!p.parentsRelationship) {
+            // No parent relationship object at all, clearly a potential root.
+            potentialRoots.push(p);
+        } else {
+            // Person has a parentsRelationship object.
+            // Check if that relationship actually has defined partners *in this snippet*.
+            const rel = p.parentsRelationship;
+            // rel.partners should be an array of IDs from the parsed FTDL snippet.
+            if (!rel.partners || rel.partners.length === 0) {
+                // This person is effectively an orphan in this snippet because their
+                // parent relationship block has no partners listed. Treat as a root.
+                // console.warn(`Person ${p.id} has parentsRelationship (ID: ${rel.id || 'N/A'}) but it has no partners in the current snippet. Treating as a root for generation layout.`);
+                potentialRoots.push(p);
+            }
+            // Else: p.parentsRelationship exists AND rel.partners has members.
+            // This person is a child of someone within this snippet, so not a root here.
+        }
+    });
+
+    // Ensure unique roots if a person somehow matched multiple conditions (though unlikely with this logic)
+    // and assign them generation 0.
+    const uniqueRootIds = new Set(); 
+    if (potentialRoots.length > 0) {
+        potentialRoots.forEach(root => {
+            if (!uniqueRootIds.has(root.id)) { // Process only if not already added as a root
+                generationMap.set(root.id, 0);
+                queue.push(root.id);
+                visited.add(root.id);
+                uniqueRootIds.add(root.id);
+            }
+        });
+    }
+    
+    // Fallback logic if no roots were identified by the above method
+    if (queue.length === 0) {
+        console.warn("No primary roots found (or all potential roots had defined parents in snippet). Looking for fallback roots.");
+        const noChildren = Object.values(personsMap).filter(p => {
+            // Check if this person is NOT in the queue yet (i.e., not already a root)
+            if (visited.has(p.id)) return false;
+            return !p.marriages.some(m => m.children && m.children.length > 0);
+        });
+        
+        if (noChildren.length > 0) {
+            noChildren.forEach(p => {
+                if (!visited.has(p.id)) { // Ensure not already processed
+                    generationMap.set(p.id, 0);
+                    queue.push(p.id);
+                    visited.add(p.id);
+                }
+            });
+        } else {
+            const firstUnvisitedPerson = Object.values(personsMap).find(p => !visited.has(p.id));
+            if (firstUnvisitedPerson) {
+                console.warn("No clear structure, using first unvisited person as root.");
+                generationMap.set(firstUnvisitedPerson.id, 0);
+                queue.push(firstUnvisitedPerson.id);
+                visited.add(firstUnvisitedPerson.id);
+            } else if (Object.keys(personsMap).length > 0 && queue.length === 0) {
+                // All persons visited but queue is empty - very odd, maybe a cycle with no exit.
+                // Default to the very first person in personsMap if all else fails.
+                const firstPerson = Object.values(personsMap)[0];
+                if (firstPerson && !visited.has(firstPerson.id)) {
+                     console.warn("Emergency fallback: using the absolute first person as root.");
+                     generationMap.set(firstPerson.id, 0);
+                     queue.push(firstPerson.id);
+                     visited.add(firstPerson.id);
+                } else {
+                    console.error("Cannot determine any root for generation assignment.");
+                    return []; // No generations can be assigned
+                }
+            } else if (Object.keys(personsMap).length === 0) {
+                return []; // Empty map
+            }
+        }
+    }
+
+    // Phase 2: BFS to assign generations top-down
+    let queueIndex = 0;
+    while (queueIndex < queue.length) {
+        const personId = queue[queueIndex++];
+        const person = personsMap[personId];
+        
+        // It's possible a person was queued but removed from personsMap (highly unlikely here)
+        // or generationMap entry is missing if logic error in Phase 1.
+        if (!person || !generationMap.has(personId)) {
+            // console.warn(`Person ${personId} in queue but not found in personsMap or generationMap. Skipping.`);
+            continue;
+        }
+        const currentGen = generationMap.get(personId);
+
+        // Assign partners to the same generation
+        if (person.marriages) {
+            person.marriages.forEach(m => {
+                m.partners.forEach(pId => {
+                    if (pId !== person.id && personsMap[pId]) {
+                        const partner = personsMap[pId];
+                        // If partner not visited, or visited but current path offers an earlier generation
+                        if (!visited.has(pId) || generationMap.get(pId) > currentGen) {
+                            generationMap.set(pId, currentGen); // Assign/Update to currentGen
+                            if (!visited.has(pId)) {
+                                queue.push(pId);
+                                visited.add(pId);
+                            } else {
+                                // Partner was already visited but now has an earlier generation.
+                                // Re-add to queue to update its children.
+                                // To prevent infinite loops in cyclic graphs (not typical for family trees but possible with bad data),
+                                // only re-queue if generation actually changed.
+                                // The check `generationMap.get(pId) > currentGen` implies it changed to an earlier one.
+                                // We might need a more sophisticated way to handle re-queuing if cycles are a concern.
+                                // For now, assume simple re-queuing is okay for earlier generation discovery.
+                                // To be safe, let's re-add only if it's a new visit.
+                                // If already visited, its own processing loop will handle its children.
+                                // The key is that its generationMap value IS updated.
+                            }
+                        } else if (generationMap.get(pId) < currentGen) {
+                            // Partner is already assigned an even EARLIER generation.
+                            // This implies current 'person' should perhaps be at partner's generation.
+                            // This can happen in complex graphs. Pull 'person' to earlier generation.
+                            generationMap.set(personId, generationMap.get(pId));
+                            // This requires re-evaluating 'person' - tricky.
+                            // For simplicity, family tree generation usually assumes a primary top-down flow.
+                            // The current logic prioritizes the 'person's' generation for their partners.
+                        }
+                        // If generationMap.get(pId) === currentGen, do nothing.
+                    }
+                });
+                
+                // Assign children to the next generation
+                if (m.children) {
+                    m.children.forEach(cId => {
+                        const child = personsMap[cId];
+                        if (child) {
+                            const childGen = currentGen + 1;
+                            // If child not visited, or visited but current path offers an earlier generation
+                            if (!visited.has(cId) || generationMap.get(cId) > childGen) {
+                                generationMap.set(cId, childGen);
+                                if (!visited.has(cId)) {
+                                    queue.push(cId);
+                                    visited.add(cId);
+                                } else {
+                                    // Similar to partners, re-queue if found earlier.
+                                    // For now, rely on the updated generationMap value.
+                                }
+                            }
+                            // If child is already at an earlier or same generation, do nothing.
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    // Phase 3: Group people by generation
+    const adjustedGenerations = [];
+    Object.keys(personsMap).forEach(pId => {
+        if (generationMap.has(pId)) {
+            const gen = generationMap.get(pId);
+            personsMap[pId].generation = gen; // Set the final generation on the person object
+            
+            if (!adjustedGenerations[gen]) {
+                adjustedGenerations[gen] = [];
+            }
+            adjustedGenerations[gen].push(pId);
+        } else {
+            // Handle unvisited nodes (should only happen if queue becomes empty prematurely or disconnected graph components)
+            // If a node was truly unvisitable from any root, assign it gen 0 and put it in its own group.
+            if (!visited.has(pId)) { // Check if it's genuinely unvisited
+                console.warn(`Person ${pId} not assigned a generation (unreachable from roots), defaulting to 0.`);
+                personsMap[pId].generation = 0;
+                if (!adjustedGenerations[0]) adjustedGenerations[0] = [];
+                if (!adjustedGenerations[0].includes(pId)) adjustedGenerations[0].push(pId);
+            } else {
+                // This case (visited but not in generationMap) should ideally not happen.
+                console.error(`Person ${pId} was visited but has no generation in generationMap. Defaulting to 0.`);
+                personsMap[pId].generation = 0;
+                if (!adjustedGenerations[0]) adjustedGenerations[0] = [];
+                if (!adjustedGenerations[0].includes(pId)) adjustedGenerations[0].push(pId);
+            }
+        }
+    });
+
+    // Sort individuals within each generation by ID for deterministic layout
+    adjustedGenerations.forEach(genList => {
+        if (genList) genList.sort((a, b) => a.id.localeCompare(b.id)); // Assuming pId is string, direct localeCompare
+    });
+
+    return adjustedGenerations.filter(g => g && g.length > 0);
+}

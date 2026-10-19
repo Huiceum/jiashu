@@ -1,0 +1,316 @@
+
+person {
+    id: g_wash;
+    name: George Washington;
+    gender: male;
+    birth: 1732-02-22;
+    death: 1799-12-14;
+    note: //美國第一任總統//;
+}
+
+person {
+    id: m_wash;
+    name: Martha Washington;
+    gender: female;
+    birth: 1731-06-02;
+    death: 1802-05-22;
+}
+
+person {
+    id: j_adams_sr; 
+    name: John Adams Sr;
+    gender: male;
+    birth: 1755-10-30; 
+    death: 1826-07-04;
+}
+
+person {
+    id: a_adams;
+    name: Abigail Adams;
+    gender: female;
+    birth: 1758-11-11;
+    death: 1818-10-28;
+}
+
+person {
+    id: e_jeff_sr; 
+    name: Elizabeth Jefferson Sr;
+    gender: female;
+    birth: 1760-03-15; 
+    death: 1830-08-10;
+}
+
+person {
+    id: t_jeff;
+    name: Thomas Jefferson;
+    gender: male;
+    birth: 1757-04-13; 
+    death: 1826-07-04; 
+    note: //美國第三任總統//;
+}
+
+person {
+    id: sam_adams; 
+    name: Samuel Adams;
+    gender: male;
+    birth: 1785-09-27; 
+    proband: true;
+    note: //主要研究對象//;
+}
+
+person {
+    id: sarah_adams;
+    name: Sarah Adams;
+    gender: female;
+    birth: 1788-01-01;
+    death: 1850-05-05;
+}
+
+person {
+    id: mary_adams; 
+    name: Mary Adams;
+    gender: female;
+    birth: 1789-07-14; 
+}
+
+person {
+    id: david_smith; 
+    name: David Smith;
+    gender: male;
+    birth: 1785-02-10;
+}
+
+
+person {
+    id: pete_jeff;
+    name: Peter Jefferson;
+    gender: male;
+    birth: 1790-05-20; 
+    death: 1865-11-01;
+}
+
+person {
+    id: anne_jeff; 
+    name: Anne Jefferson;
+    gender: female;
+    birth: 1792-06-15;
+    death: 1860-03-20;
+}
+
+
+person {
+    id: sue_jeff; 
+    name: Susan Jefferson;
+    gender: female;
+    birth: 1793-11-01; 
+}
+
+person {
+    id: michael_jones; 
+    name: Michael Jones;
+    gender: male;
+    birth: 1790-01-01;
+}
+
+
+person {
+    id: emily_adams; 
+    name: Emily Adams;
+    gender: female;
+    birth: 1815-10-10;
+}
+
+person {
+    id: wm_adams;
+    name: William Adams;
+    gender: male;
+    birth: 1818-03-25;
+    death: 1880-09-15;
+}
+
+person {
+    id: olivia_jeff; 
+    name: Olivia Jefferson;
+    gender: female;
+    birth: 1820-07-07;
+}
+
+person {
+    id: leo_miller;
+    name: Leo Miller;
+    gender: male;
+    birth: 1840-12-01;
+    note: //第五代成員//;
+}
+
+relationship {
+    partners: [g_wash, m_wash];
+    type: marriage;
+    status: widowed;
+    children: [j_adams_sr, e_jeff_sr];
+}
+
+relationship {
+    partners: [j_adams_sr, a_adams];
+    type: marriage;
+    status: widowed;
+    start_date: 1780-01-01; 
+    children: [sam_adams, mary_adams];
+}
+
+relationship {
+    partners: [e_jeff_sr, t_jeff];
+    type: marriage;
+    status: widowed;
+    start_date: 1782-01-01; 
+    children: [pete_jeff, sue_jeff];
+}
+
+relationship {
+    partners: [sam_adams, sarah_adams];
+    type: marriage;
+    status: widowed; 
+    start_date: 1810-01-01; 
+    children: [emily_adams, wm_adams];
+}
+
+relationship {
+    partners: [mary_adams, david_smith];
+    type: marriage;
+    status: married; 
+    start_date: 1812-01-01; 
+}
+
+relationship {
+    partners: [pete_jeff, anne_jeff];
+    type: marriage;
+    status: widowed; 
+    start_date: 1815-01-01; 
+    children: [olivia_jeff];
+}
+
+relationship {
+    partners: [sue_jeff, michael_jones];
+    type: marriage;
+    status: married;
+    start_date: 1816-01-01; 
+}
+
+relationship {
+    partners: [emily_adams]; 
+    children: [leo_miller];
+}
+
+
+
+person {
+    id: ben_frank;
+    name: Benjamin Franklin;
+    gender: male;
+    birth: 1706-01-17;
+    death: 1790-04-17;
+    note: //開國元勛，發明家//;
+}
+
+person {
+    id: deb_frank;
+    name: Deborah Read Franklin;
+    gender: female;
+    birth: 1708-09-14;
+    death: 1774-12-19;
+}
+
+person {
+    id: wm_frank;
+    name: William Franklin;
+    gender: male;
+    birth: 1730-11-22; 
+    death: 1813-11-17;
+}
+
+person {
+    id: eliz_downes; 
+    name: Elizabeth Downes;
+    gender: female;
+    birth: 1734-01-01;
+    death: 1777-07-28;
+}
+
+person {
+    id: temp_frank; 
+    name: William Temple Franklin;
+    gender: male;
+    birth: 1760-02-22;
+    death: 1823-05-25;
+}
+
+
+relationship {
+    partners: [ben_frank, deb_frank];
+    type: partnership; 
+    status: widowed;
+    children: [wm_frank]; 
+}
+
+relationship {
+    partners: [wm_frank, eliz_downes];
+    type: marriage;
+    status: widowed;
+    children: [temp_frank];
+}
+
+
+person {
+    id: j_madison;
+    name: James Madison;
+    gender: male;
+    birth: 1751-03-16;
+    death: 1836-06-28;
+    note: //美國第四任總統//;
+}
+
+person {
+    id: d_madison;
+    name: Dolley Madison;
+    gender: female;
+    birth: 1768-05-20;
+    death: 1849-07-12;
+}
+
+person {
+    id: payne_todd;
+    name: John Payne Todd;
+    gender: male;
+    birth: 1792-02-29;
+    death: 1852-01-16;
+    note: //繼子關係//;
+}
+
+
+
+relationship {
+    partners: [j_madison, d_madison];
+    type: marriage;
+    status: widowed;
+
+}
+
+
+
+person {
+    id: a_hamilton;
+    name: Alexander Hamilton;
+    gender: male;
+    birth: 1755-01-11; \\ 或 1757 \\
+    death: 1804-07-12;
+    note: //開國元勛，財政部長//;
+}
+
+person {
+    id: b_ross;
+    name: Betsy Ross;
+    gender: female;
+    birth: 1752-01-01;
+    death: 1836-01-30;
+    note: //被認為製作了第一面美國國旗//;
+}

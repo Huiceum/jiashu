@@ -1,0 +1,104 @@
+/* relationship.css - Add these styles */
+
+/* Style for the expansion marker dots */
+.expansion-marker {
+    stroke: none; /* No border */
+    /* Fill color is set dynamically based on type ('pink' or 'green') */
+    cursor: pointer; /* Indicate it's clickable */
+    transition: transform 0.2s ease-in-out; /* Smooth scaling on hover */
+    pointer-events: auto; /* Ensure events are captured */
+}
+
+/* Optional: Hover effect */
+.expansion-marker:hover {
+    transform: scale(1.5); /* Scale up slightly on hover */
+}
+
+/* You can add specific styles based on marker type if needed */
+/* .expansion-marker[data-type="marriage"] { fill: pink; } */
+/* .expansion-marker[data-type="sibling"] { fill: green; } */
+
+
+/* Rest of your existing relationship.css styles */
+:root {
+    --line-color: #7f8c8d;
+    --line-color-dark-mode: #95a5a6;
+    --text-color-secondary: #555;
+    --text-color-secondary-dark-mode: #bbb;
+    --line-stroke-width: 1.5px;
+    --line-marriage-stroke-width: 2px;
+
+    --marriage-status-marker-color: #e74c3c;
+    --marriage-status-marker-color-dark-mode: #ff7675;
+
+    --vertical-spacing-unit: 30px;
+    --person-node-width: 70px; /* Should be --person-figure-size from JS */
+    --person-node-height: 70px; /* Should be --person-figure-size from JS */
+    --sibling-spacing: 35px;
+    --couple-spacing: 30px;
+    --family-unit-spacing: 55px;
+    --inter-tree-spacing: 80px;
+
+    --generation-gap-lines: 35px;
+    --multi-marriage-Y-offset: 22px;
+    --pcc-shift-factor: 0.2;
+
+    /* Added for JS loadCssVars, ensure these match your actual figure size if different from node width/height */
+    --person-figure-size: 70px;
+}
+
+body.dark-mode {
+    --line-color: var(--line-color-dark-mode);
+    --marriage-status-marker-color: var(--marriage-status-marker-color-dark-mode);
+    --text-color-secondary: var(--text-color-secondary-dark-mode);
+}
+
+#relationship-svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%; /* Will be adjusted by JS */
+    height: 100%; /* Will be adjusted by JS */
+    pointer-events: none; /* Changed from auto to none, individual elements like markers can override */
+    z-index: 0;
+    overflow: visible;
+}
+
+.relationship-line {
+    stroke: var(--line-color);
+    stroke-width: var(--line-stroke-width);
+    fill: none;
+}
+
+/* Style for marriage lines (solid by default) */
+.marriage-line {
+    stroke-width: var(--line-marriage-stroke-width);
+    stroke-dasharray: none; /* Explicitly solid */
+}
+
+/* Style for partnership lines (dashed) */
+.partnership-line {
+    stroke-width: var(--line-marriage-stroke-width); /* Can be same or different width */
+    stroke-dasharray: 5, 5; /* Adjust numbers for dash length and space length. e.g., "5,5" or "4 2" */
+}
+
+
+/* Style for date text on marriage/partnership lines */
+.relationship-date {
+    font-size: 10px; /* Adjust size as needed */
+    fill: var(--text-color-secondary); /* Use a variable for text color */
+    user-select: none; /* Prevent text selection */
+    pointer-events: none; /* Ensure text does not interfere with mouse events */
+    font-family: sans-serif; /* Or match your app's font stack */
+    text-anchor: middle; /* Center the text horizontally */
+    /* dominant-baseline will be 'alphabetic' by default; 'dy' in JS handles vertical shift */
+}
+
+
+/* Styles for status markers (divorce/separation) */
+.divorce-marker path,
+.separation-marker path {
+    stroke: var(--marriage-status-marker-color);
+    stroke-width: calc(var(--line-marriage-stroke-width) + 0.5px);
+    stroke-linecap: round;
+}

@@ -1,0 +1,217 @@
+/* theme.css
+   研究配色主題（最後載入，覆蓋其他樣式）。
+   與研究圖表相同：台北黑體、主色 #F3E6D2 #DDD7D1 #E8C18F #D9954D #C3A087 #AFA69D、
+   方塊與線條不加外框，文字用深棕色。 */
+
+@font-face {
+    font-family: 'Taipei Sans TC Beta';
+    src: url('fonts/TaipeiSansTCBeta-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Taipei Sans TC Beta';
+    src: url('fonts/TaipeiSansTCBeta-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-display: swap;
+}
+
+:root,
+body,
+body.dark-mode {
+    /* 研究色盤 */
+    --rs-sand: #F3E6D2;
+    --rs-mist: #DDD7D1;
+    --rs-apricot: #E8C18F;
+    --rs-amber: #D9954D;
+    --rs-clay: #C3A087;
+    --rs-stone: #AFA69D;
+    --rs-ink: #3B2F27;
+    --rs-ink-soft: #6B5B4E;
+    --rs-paper: #FBF8F4;
+
+    /* 介面 */
+    --primary-color: var(--rs-ink);
+    --primary-color-darker: #2A211B;
+    --primary-color-lighter: var(--rs-ink-soft);
+    --primary-color-pale: var(--rs-sand);
+    --primary-color-rgb: 59, 47, 39;
+    --accent-color: var(--rs-amber);
+    --background-color: #FFFFFF;
+    --surface-color: var(--rs-paper);
+    --surface-color-hover: #F4EEE7;
+    --text-color-primary: var(--rs-ink);
+    --text-color-secondary: var(--rs-ink-soft);
+    --text-color-on-primary: #FFFFFF;
+    --text-color-link: var(--rs-amber);
+    --border-color: var(--rs-mist);
+    --border-color-light: #ECE7E2;
+    --font-family-sans-serif: 'Taipei Sans TC Beta', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
+
+    /* 人物符號：不加外框 */
+    --person-figure-border-width: 0px;
+    --person-other-border-thickness: 0px;
+    --person-name-color: var(--rs-ink);
+    --person-age-color: var(--rs-ink-soft);
+    --person-note-color: var(--rs-ink-soft);
+    --person-deceased-x-color: var(--rs-ink-soft);
+    --person-male-bg: var(--rs-mist);
+    --person-male-border: transparent;
+    --person-female-bg: #EEDDC6;   /* sand 與 apricot 之間，放在 sand 底色上仍看得清楚 */
+    --person-female-border: transparent;
+    --person-other-bg: #E9E1D8;
+    --person-other-border: #E9E1D8;
+    --person-proband-name-color: var(--rs-ink);
+    --person-proband-age-color: var(--rs-ink-soft);
+    --person-tooltip-bg: var(--rs-ink);
+    --person-tooltip-text-color: var(--rs-sand);
+    --canvas-bg-color: var(--rs-paper);
+    --zoom-button-bg: #FFFFFF;
+    --zoom-button-border: var(--rs-mist);
+    --zoom-button-text: var(--rs-ink);
+    --zoom-button-hover-bg: var(--rs-sand);
+    --zoom-button-active-bg: var(--rs-apricot);
+    --highlight-saturate-filter: none;
+
+    /* 線條 */
+    --line-color: var(--rs-stone);
+    --line-stroke-width: 1.6px;
+    --line-marriage-stroke-width: 2.5px;
+    --marriage-status-marker-color: var(--rs-ink);
+
+    /* 編輯器 */
+    --ftdl-editor-bg: var(--rs-paper);
+    --ftdl-editor-text-color: var(--rs-ink);
+    --ftdl-line-numbers-bg: #F1ECE6;
+    --ftdl-line-numbers-text-color: var(--rs-stone);
+    --ftdl-editor-border-color: var(--rs-mist);
+    --ftdl-suggestion-bg: #FFFFFF;
+    --ftdl-suggestion-text-color: var(--rs-ink);
+    --ftdl-suggestion-border-color: var(--rs-mist);
+    --ftdl-suggestion-hover-bg: var(--rs-apricot);
+
+    /* 樹系選擇器與 metadata（原本為綠色） */
+    --light-primary: var(--rs-amber);
+    --light-primary-hover: #C98540;
+    --light-primary-active: #B87636;
+    --light-primary-light: var(--rs-sand);
+    --light-primary-dark: var(--rs-ink);
+    --light-background: #FFFFFF;
+    --light-background-secondary: var(--rs-paper);
+    --light-background-tertiary: #F1ECE6;
+    --light-text-primary: var(--rs-ink);
+    --light-text-secondary: var(--rs-ink-soft);
+    --light-text-tertiary: var(--rs-stone);
+    --light-border: var(--rs-mist);
+    --light-border-light: #F1ECE6;
+    --light-selected-bg: var(--rs-sand);
+    --light-selected-text: var(--rs-ink);
+    --light-hover-bg: #F4EEE7;
+}
+
+body { font-family: var(--font-family-sans-serif); color: var(--rs-ink); }
+#family-tree-container { background-color: var(--rs-paper); }
+
+/* --- 人物符號 --- */
+.person-figure,
+.person-figure.male,
+.person-figure.female { border: none; }
+.person-figure.male { background-color: var(--node-fill, var(--person-male-bg)); }
+.person-figure.female { background-color: var(--node-fill, var(--person-female-bg)); }
+.person-figure.other,
+.person-figure.other::before { background-color: var(--node-fill, var(--person-other-bg)); }
+
+/* 案主（先證者）維持原本填色，外框由 research.js 在節點外緣畫一圈深棕色 */
+.person-figure.male.is-proband { background-color: var(--node-fill, var(--person-male-bg)) !important; }
+.person-figure.female.is-proband { background-color: var(--node-fill, var(--person-female-bg)) !important; }
+.person-figure.other.is-proband,
+.person-figure.other.is-proband::before { background-color: var(--node-fill, var(--person-other-bg)) !important; }
+.person-figure.is-proband .person-name { font-weight: 700; }
+
+.person-figure .person-name { color: var(--rs-ink); }
+.person-figure .person-age { color: var(--rs-ink-soft); }
+.person-figure .person-note-preview { color: var(--rs-ink-soft); }
+.person-figure:hover { box-shadow: 0 4px 12px rgba(59, 47, 39, 0.15); }
+
+/* 慢性病、身心障礙：半透明深棕覆蓋 */
+.person-figure .highlight-overlay,
+.person-figure.is-proband.male .highlight-overlay,
+.person-figure.is-proband.female .highlight-overlay,
+.person-figure.is-proband.other .highlight-overlay {
+    background-color: rgba(59, 47, 39, 0.28) !important;
+    filter: none;
+}
+
+.person-figure.desaturated { filter: saturate(45%) brightness(97%); }
+
+/* --- 線條 --- */
+.relationship-line { stroke: var(--rs-stone); }
+.marriage-line,
+.partnership-line { stroke: var(--rs-amber); }
+.relationship-date { fill: var(--rs-ink-soft); font-family: var(--font-family-sans-serif); font-size: 11px; }
+.divorce-marker path,
+.separation-marker path { stroke: var(--rs-ink); }
+.bond-label { fill: var(--rs-ink-soft); font-size: 11px; font-family: var(--font-family-sans-serif); }
+
+/* --- 圖例 --- */
+.ftdl-legend {
+    position: absolute;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--rs-ink-soft);
+    font-family: var(--font-family-sans-serif);
+    pointer-events: none;
+}
+.ftdl-legend .legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ftdl-legend svg { flex-shrink: 0; }
+
+/* --- metadata 標題區 --- */
+#metadata-display-stack > .metadata-title { color: var(--rs-ink); font-weight: 700; }
+#metadata-display-stack > .metadata-subtitle,
+#metadata-display-stack > .metadata-author,
+#metadata-display-stack > .metadata-date { color: var(--rs-ink-soft); }
+#metadata-display-stack > .metadata-family-type {
+    color: var(--rs-ink);
+    background: var(--rs-sand);
+    border-radius: 999px;
+    padding: 2px 12px;
+    font-size: 0.85em;
+    align-self: center;
+    width: fit-content;
+}
+
+/* --- 縮放與匯出按鈕 --- */
+#canvas-zoom-controls .export-btn { padding: 0 10px; width: auto; font-size: 12px; }
+#canvas-zoom-controls .export-btn:disabled { opacity: 0.6; cursor: progress; }
+
+/* --- 匯出用版面（畫面外） --- */
+.ftdl-export-box {
+    display: inline-block;
+    padding: 24px;
+    color: var(--rs-ink);
+    font-family: var(--font-family-sans-serif);
+    background: transparent;
+}
+.ftdl-export-head { text-align: center; margin-bottom: 8px; }
+.ftdl-export-head .metadata-title { font-size: 22px; font-weight: 700; }
+.ftdl-export-head .metadata-subtitle,
+.ftdl-export-head .metadata-author,
+.ftdl-export-head .metadata-date,
+.ftdl-export-head .metadata-family-type { font-size: 13px; color: var(--rs-ink-soft); margin-top: 4px; }
+.ftdl-export-tree { overflow: visible; }
+
+/* --- 頁首 --- */
+#app-header { background-color: var(--rs-ink); }
+.tab-btn.active { color: var(--rs-ink); }
+.tab-btn.active::after { background-color: var(--rs-amber); }
+
+/* 有 bond／tie 時的寬間距（relationship.js 依內容切換），比例接近研究的數位家系圖 */
+html.ftdl-spacious {
+    --couple-spacing: 120px;
+    --sibling-spacing: 120px;
+    --family-unit-spacing: 90px;
+    --generation-gap-lines: 100px;
+}

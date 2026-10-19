@@ -1,0 +1,146 @@
+/* FTDL Specific Color Variables */
+:root {
+    --ftdl-color-error: red;
+    --ftdl-color-error-bg-marker: rgba(255, 0, 0, 0.2);
+    --ftdl-color-error-message-bg: rgba(255, 0, 0, 0.1);
+    --ftdl-color-error-message-border: rgba(255, 0, 0, 0.3);
+
+    /* Editor and UI colors - these should integrate with your base.css theme variables */
+    --ftdl-editor-bg: var(--background-color-secondary, #f8f9fa);
+    --ftdl-editor-text-color: var(--text-color, #212529); /* Text color for the editor content */
+    --ftdl-line-numbers-bg: var(--background-color-tertiary, #e9ecef);
+    --ftdl-line-numbers-text-color: var(--text-color-secondary, #6c757d);
+    --ftdl-editor-border-color: var(--border-color, #dee2e6);
+
+    --ftdl-suggestion-bg: var(--background-color-paper, #ffffff);
+    --ftdl-suggestion-text-color: var(--text-color, #212529);
+    --ftdl-suggestion-border-color: var(--border-color, #ced4da);
+    --ftdl-suggestion-hover-bg: var(--accent-color, #007bff);
+    --ftdl-suggestion-hover-text-color: white;
+}
+
+body.dark-mode {
+    --ftdl-color-error: #CF6679; /* Material Design dark theme error color */
+    --ftdl-color-error-bg-marker: rgba(207, 102, 121, 0.3);
+    --ftdl-color-error-message-bg: rgba(207, 102, 121, 0.15);
+    --ftdl-color-error-message-border: rgba(207, 102, 121, 0.4);
+
+    --ftdl-editor-bg: var(--dark-background-secondary, #1e1e1e);
+    --ftdl-editor-text-color: var(--dark-text-color, #e0e0e0); /* Dark theme text color for editor */
+    --ftdl-line-numbers-bg: var(--dark-background-tertiary, #2c2c2c);
+    --ftdl-line-numbers-text-color: var(--dark-text-secondary, #a0a0a0);
+    --ftdl-editor-border-color: var(--dark-border-color, #444444);
+
+    --ftdl-suggestion-bg: var(--dark-background-paper, #333333);
+    --ftdl-suggestion-text-color: var(--dark-text-color, #e0e0e0);
+    --ftdl-suggestion-border-color: var(--dark-border-color, #555555);
+    --ftdl-suggestion-hover-bg: var(--dark-accent-color, #378BFF);
+    --ftdl-suggestion-hover-text-color: white;
+}
+
+
+/* General Editor Layout */
+#ftdl-editor-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border: 1px solid var(--ftdl-editor-border-color);
+    position: relative;
+}
+
+.editor-controls-header {
+    padding: 10px;
+    background-color: var(--ftdl-editor-bg); /* Using editor background */
+    border-bottom: 1px solid var(--ftdl-editor-border-color);
+}
+
+.editor-container {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+    background-color: var(--ftdl-editor-bg);
+}
+
+#line-numbers {
+    width: 45px;
+    padding: 10px 5px 10px 10px;
+    font-family: monospace;
+    font-size: 1em;
+    line-height: 1.5;
+    text-align: right;
+    color: var(--ftdl-line-numbers-text-color);
+    background-color: var(--ftdl-line-numbers-bg);
+    user-select: none;
+    border-right: 1px solid var(--ftdl-editor-border-color);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#line-numbers > div {
+    white-space: pre;
+    height: 1.5em;
+    box-sizing: border-box;
+}
+
+#line-numbers > div.error-line-marker {
+    background-color: var(--ftdl-color-error-bg-marker);
+    color: var(--ftdl-color-error);
+    font-weight: bold;
+}
+
+#ftdl-editor {
+    flex-grow: 1;
+    font-family: monospace;
+    font-size: 1em;
+    line-height: 1.5;
+    padding: 10px;
+    border: none;
+    outline: none;
+    resize: none;
+    background-color: transparent;
+    color: var(--ftdl-editor-text-color); /* This line ensures editor text color respects themes */
+    box-sizing: border-box;
+    white-space: pre;
+    overflow-wrap: normal;
+}
+
+/* Error Display */
+#error-messages-container {
+    padding: 5px 10px;
+    background-color: var(--ftdl-color-error-message-bg);
+    border-bottom: 1px solid var(--ftdl-color-error-message-border);
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.9em;
+}
+
+#error-messages-container .error-message {
+    color: var(--ftdl-color-error);
+    margin-bottom: 3px;
+    white-space: pre-wrap;
+}
+
+/* Autocomplete Suggestion Box */
+#suggestion-box {
+    position: absolute;
+    border: 1px solid var(--ftdl-suggestion-border-color);
+    background-color: var(--ftdl-suggestion-bg);
+    color: var(--ftdl-suggestion-text-color);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    font-family: monospace;
+    font-size: 0.9em;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+#suggestion-box div {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+#suggestion-box div:hover,
+#suggestion-box div.selected {
+    background-color: var(--ftdl-suggestion-hover-bg);
+    color: var(--ftdl-suggestion-hover-text-color);
+}

@@ -1,0 +1,41 @@
+person { id: p1; name: "Grandpa"; gender: male; birth: 1930-01-01; }
+person { id: p2; name: "Grandma"; gender: female; birth: 1932-05-51; }
+person { id: p3; name: "Dad"; gender: male; birth: 1960-03-10; }
+person { id: p4; name: "Aunt"; gender: female; birth: 1962-07-20; }
+person { id: p5; name: "Mom"; gender: female; birth: 1965-11-05; }
+person { id: p6; name: "Me"; gender: male; birth: 1990-09-01; proband: true; }
+person { id: p7; name: "Sis"; gender: female; birth: 1993-12-25; }
+person { id: p8; name: "Uncle's Wife"; gender: female; birth: 1963-01-01; }
+person { id: p9; name: "Cousin"; gender: male; birth: 1995-02-02; }
+
+person { id: p20; name: "Codwdusin"; gender: male; birth: 1995-02-02; }
+
+
+relationship {
+    partners: [p1, p2];
+    type: marriage;
+    status: married;
+    children: [p3, p4];
+}
+relationship {
+    partners: [p3, p8];
+    type: marriage;
+    status: married;
+    children: [p20];
+
+}
+relationship {
+    partners: [p3, p5];
+    type: marriage;
+    status: married;
+    children: [p6, p7];
+}
+
+
+person { id: p10; name: "Aunt's Husband"; gender: male; birth: 1960-01-01; }
+relationship {
+    partners: [p4, p10];
+    type: marriage;
+    status: divorced;
+    children: [p9];
+}

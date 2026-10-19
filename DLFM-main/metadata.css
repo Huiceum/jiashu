@@ -1,0 +1,267 @@
+/* metadata.css - Updated to fix hover animation triggering */
+
+/* 全局变量定义 - 提供绿色主题配色方案与直观的命名 */
+:root {
+  /* 亮色模式 */
+  --light-primary: #28a745; /* 主色调 - 绿色 */
+  --light-primary-hover: #218838;
+  --light-primary-active: #1e7e34;
+  --light-primary-light: #d4edda; /* 用于选中项背景等 */
+  --light-primary-dark: #155724;  /* 用于选中项文字等 */
+
+  --light-background: #ffffff;
+  --light-background-secondary: #f8f9fa; /* 面板背景 */
+  --light-background-tertiary: #e9ecef; /* 面板头部背景 */
+
+  --light-text-primary: #212529;
+  --light-text-secondary: #6c757d;
+  --light-text-tertiary: #adb5bd; /* 用于滚动条等次要元素 */
+
+  --light-border: #dee2e6;
+  --light-border-light: #f1f3f5; /* 列表项分隔线 */
+
+  --light-selected-bg: var(--light-primary-light);
+  --light-selected-text: var(--light-primary-dark);
+  --light-hover-bg: #e9ecef; /* 列表项悬停背景 */
+
+  /* 暗色模式 */
+  --dark-primary: #28a745; /* 主色调 - 绿色 */
+  --dark-primary-hover: #2cb74e;
+  --dark-primary-active: #30c653;
+  --dark-primary-light: #1f4b2d; /* 用于选中项背景等 */
+  --dark-primary-dark: #a3d9b1;  /* 用于选中项文字等 */
+
+  --dark-background: #1e1e1e;
+  --dark-background-secondary: #252526; /* 面板背景 */
+  --dark-background-tertiary: #333333; /* 面板头部背景 */
+
+  --dark-text-primary: #d4d4d4;
+  --dark-text-secondary: #a0a0a0;
+  --dark-text-tertiary: #808080; /* 用于滚动条等次要元素 */
+
+  --dark-border: #5a5a5a;
+  --dark-border-light: #444444; /* 列表项分隔线 */
+
+  --dark-selected-bg: var(--dark-primary-light);
+  --dark-selected-text: var(--dark-primary-dark);
+  --dark-hover-bg: #3a3a3a; /* 列表项悬停背景 */
+}
+
+/* 动态应用变量在亮色模式和暗色模式 */
+body:not(.dark-mode) {
+  --primary: var(--light-primary);
+  --primary-hover: var(--light-primary-hover);
+  --primary-active: var(--light-primary-active);
+  --primary-light: var(--light-primary-light);
+  --primary-dark: var(--light-primary-dark);
+
+  --background: var(--light-background);
+  --background-secondary: var(--light-background-secondary);
+  --background-tertiary: var(--light-background-tertiary);
+
+  --text-primary: var(--light-text-primary);
+  --text-secondary: var(--light-text-secondary);
+  --text-tertiary: var(--light-text-tertiary);
+
+  --border: var(--light-border);
+  --border-light: var(--light-border-light);
+
+  --selected-bg: var(--light-selected-bg);
+  --selected-text: var(--light-selected-text);
+  --hover-bg: var(--light-hover-bg);
+}
+
+body.dark-mode {
+  --primary: var(--dark-primary);
+  --primary-hover: var(--dark-primary-hover);
+  --primary-active: var(--dark-primary-active);
+  --primary-light: var(--dark-primary-light);
+  --primary-dark: var(--dark-primary-dark);
+
+  --background: var(--dark-background);
+  --background-secondary: var(--dark-background-secondary);
+  --background-tertiary: var(--dark-background-tertiary);
+
+  --text-primary: var(--dark-text-primary);
+  --text-secondary: var(--dark-text-secondary);
+  --text-tertiary: var(--dark-text-tertiary);
+
+  --border: var(--dark-border);
+  --border-light: var(--dark-border-light);
+
+  --selected-bg: var(--dark-selected-bg);
+  --selected-text: var(--dark-selected-text);
+  --hover-bg: var(--dark-hover-bg);
+}
+
+
+/*
+   Container for the stacked metadata elements
+   This container is positioned absolutely within #family-tree-container.
+*/
+#family-tree-container > #metadata-display-stack {
+    position: absolute;
+    top: 10px; /* Position below zoom controls */
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Fine-tune horizontal centering */
+    width: calc(100% - 140px); /* Allow space for zoom controls and selector button */
+    max-width: 600px; /* Prevent excessive width on large screens */
+    /* REMOVED: pointer-events: none; from here */
+    pointer-events: auto; /* << ADDED: Allow pointer events for hover >> */
+    cursor: pointer; /* << ADDED: Show pointer cursor to indicate interactivity >> */
+    z-index: 50; /* Above tree content (0, 1), below selector panel (1005) and zoom controls (100) */
+    font-family: 'Helvetica Neue', Arial, sans-serif; /* Consistent font */
+    text-align: center; /* Center text within the stack's width */
+
+    display: flex; /* Use flexbox for vertical stacking */
+    flex-direction: column;
+    align-items: center; /* Center items horizontally within the flex container */
+    gap: 12px; /* Vertical space between items (Line Spacing) */
+    padding: 5px 10px; /* Optional padding inside the stack container - Added horizontal padding */
+
+    /* Transition for hover animation */
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    transform-origin: center top; /* Ensure consistent movement anchor */
+}
+
+/* Hover state - hide by moving up and fading out */
+#metadata-display-stack:hover {
+    /* Move up past its height + small margin, KEEP Horizontal transform */
+    transform: translateY(calc(-100% - 20px)) translateX(-50%);
+    opacity: 0;
+    pointer-events: none; /* Disable interaction when hidden */
+}
+
+/* Styles for individual elements *inside* the stack */
+#metadata-display-stack > div {
+    /* Reset positioning if inherited */
+    position: static;
+    transform: none; /* Remove any individual transform */
+    left: auto; right: auto; top: auto; bottom: auto;
+    width: 100%; /* Allow elements to take full width of the stack */
+    box-sizing: border-box; /* Include padding/border in width */
+
+    /* Common text styles */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Main Title inside stack */
+#metadata-display-stack > .metadata-title {
+    color: var(--text-color-primary); /* Primary color for title */
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+/* Subtitle inside stack */
+#metadata-display-stack > .metadata-subtitle {
+    color: var(--text-color-secondary); /* Secondary color for subtitle */
+    font-size: 1em;
+    font-weight: 400;
+}
+
+/* Author inside stack */
+#metadata-display-stack > .metadata-author {
+    color: var(--text-color-secondary); /* Secondary color */
+    font-size: 0.85em;
+    font-style: normal; /* Ensure no italic */
+}
+
+/* Date inside stack */
+#metadata-display-stack > .metadata-date {
+     color: var(--text-color-secondary); /* Secondary color */
+    font-size: 0.85em;
+}
+
+
+/* Mobile Adjustments (<= 768px) */
+@media (max-width: 768px) {
+    #family-tree-container > #metadata-display-stack {
+        top: 10px; /* Keep top position similar */
+        left: 10px; /* Move to the left */
+        transform: none; /* Remove centering transform */
+        width: auto; /* Auto width based on content/max-width */
+        max-width: calc(100% - 20px); /* Max width within 10px padding on each side */
+        align-items: flex-start; /* Align items to the left */
+        text-align: left; /* Align text to the left */
+        gap: 8px; /* Slightly smaller gap on mobile */
+        padding: 5px; /* Adjust padding for mobile */
+    }
+
+     /* Individual elements inside stack on mobile - ensure left alignment */
+     #metadata-display-stack > div {
+         text-align: left; /* Ensure text is left-aligned */
+     }
+
+    /* Hover state on mobile - use the adjusted position as the basis */
+    #family-tree-container > #metadata-display-stack:hover {
+        /* Move up based on the mobile position */
+        transform: translateY(calc(-100% - 20px)); /* Only move up, no translateX needed */
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+
+/* Grayscale Mode Styles */
+/* Apply filter to the scalable wrapper and its content */
+#family-tree-container.grayscale-mode #family-tree-scalable-wrapper {
+     filter: grayscale(100%) contrast(80%) brightness(110%);
+}
+
+/* Override background/border colors within grayscale mode, especially for 'other' shape */
+#family-tree-container.grayscale-mode .person-figure {
+    border-color: var(--text-color-primary) !important; /* Use text color for border */
+    /* Remove any specific background colors applied directly via JS or other CSS */
+    /* Background will be handled by the filter */
+    background-color: transparent !important;
+}
+
+/* Specific shape adjustments for grayscale borders/backgrounds */
+#family-tree-container.grayscale-mode .person-figure.other::before {
+     background-color: var(--background-tertiary) !important; /* Make the 'other' shape border match */
+     filter: none !important; /* Prevent double filtering on the pseudo-element */
+}
+
+
+/* Proband status in grayscale mode */
+#family-tree-container.grayscale-mode .person-figure.is-proband {
+     /* Proband filter is now part of the wrapper filter */
+     /* Ensure border/background colors match the grayscale theme */
+     border-color: var(--text-color-primary) !important;
+     background-color:var(--light-text-secondary) !important;
+}
+#family-tree-container.grayscale-mode .person-figure.other.is-proband::before {
+     background-color: var(--light-text-secondary) !important;
+}
+
+/* Deceased X in grayscale mode */
+#family-tree-container.grayscale-mode .deceased-x::before,
+#family-tree-container.grayscale-mode .deceased-x::after {
+    background-color: var(--text-color-primary) !important; /* Make X match border color */
+}
+
+/* Text color adjustments in grayscale mode - make them prominent black/white */
+#family-tree-container.grayscale-mode .person-name,
+#family-tree-container.grayscale-mode .person-age,
+#family-tree-container.grayscale-mode .person-note-preview {
+    color: var(--text-color-primary) !important; /* Ensure text is readable black/white */
+}
+
+/* Relationship lines and markers in grayscale mode - keep them subtle */
+/* These are part of the SVG layer which is *not* inside the scalable wrapper */
+/* We need separate styles for the SVG elements */
+#family-tree-container.grayscale-mode #relationship-svg-layer .relationship-line,
+#family-tree-container.grayscale-mode #relationship-svg-layer .relationship-date,
+#family-tree-container.grayscale-mode #relationship-svg-layer .divorce-marker path,
+#family-tree-container.grayscale-mode #relationship-svg-layer .separation-marker path {
+    stroke: var(--text-color-secondary) !important; /* Subtle gray lines */
+    fill: var(--text-color-secondary) !important; /* Subtle gray text */
+}
+
+/* Optional: Make marriage/partnership lines slightly darker in grayscale */
+#family-tree-container.grayscale-mode #relationship-svg-layer .marriage-line,
+#family-tree-container.grayscale-mode #relationship-svg-layer .partnership-line {
+    stroke: var(--text-color-primary) !important; /* Darker lines for marriage/partnership */
+}

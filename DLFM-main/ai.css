@@ -1,0 +1,80 @@
+/* ai.css：Google AI Studio 設定視窗與狀態列 */
+
+#dialogue-container { flex-wrap: wrap; }
+
+#ai-status {
+    display: none;
+    order: -1;
+    flex-basis: 100%;
+    margin-bottom: 8px;
+    padding: 6px 12px;
+    border-radius: var(--border-radius-medium);
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+#ai-status.ai-status-info { background: var(--primary-color-pale); color: var(--text-color-secondary); }
+#ai-status.ai-status-success { background: #F3E6D2; color: #3B2F27; }
+#ai-status.ai-status-error { background: #F6E1DA; color: #8A3B22; }
+
+#run-dialogue-btn.is-busy { opacity: 0.75; cursor: progress; }
+
+.ai-settings-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    color: var(--text-color-on-primary);
+    border-radius: var(--border-radius-medium);
+    padding: 6px 12px;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+.ai-settings-btn:hover { background: rgba(255, 255, 255, 0.12); }
+
+#ai-settings-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(59, 47, 39, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 16px;
+}
+#ai-settings-overlay.visible { display: flex; }
+
+.ai-dialog {
+    background: var(--background-color);
+    color: var(--text-color-primary);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    width: min(440px, 100%);
+    padding: 22px 24px 18px;
+}
+.ai-dialog h3 { margin: 0 0 10px; font-size: 1.15em; }
+.ai-dialog label { display: block; font-size: 0.9em; margin: 14px 0 6px; color: var(--text-color-secondary); }
+.ai-dialog input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 11px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-medium);
+    font-size: 0.95em;
+    background: var(--background-color);
+    color: var(--text-color-primary);
+}
+.ai-dialog input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2); }
+.ai-dialog-message { background: var(--primary-color-pale); padding: 8px 10px; border-radius: 6px; font-size: 0.9em; margin: 0 0 4px; }
+.ai-dialog-hint { font-size: 0.82em; color: var(--text-color-secondary); margin: 6px 0 0; line-height: 1.5; }
+.ai-dialog-hint a { color: var(--primary-color-darker); }
+.ai-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.ai-btn-primary, .ai-btn-secondary {
+    border-radius: var(--border-radius-medium);
+    padding: 7px 14px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.ai-btn-primary { background: var(--primary-color); color: var(--text-color-on-primary); }
+.ai-btn-primary:hover { background: var(--primary-color-darker); }
+.ai-btn-secondary { background: transparent; border-color: var(--border-color); color: var(--text-color-secondary); }
+.ai-btn-secondary:hover { background: var(--surface-color-hover); }
+#ai-key-clear { margin-right: auto; }

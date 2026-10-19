@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家書 Jiashu｜用一段話畫出一個家</title>
+    <link rel="stylesheet" href="base.css">
+    <link rel="stylesheet" href="grammar.css">
+    <link rel="stylesheet" href="person.css">
+    <link rel="stylesheet" href="relationship.css">
+    <link rel="stylesheet" href="treeSelector.css">
+    <link rel="stylesheet" href="metadata.css">
+    <link rel="stylesheet" href="ai.css">
+    <link rel="stylesheet" href="theme.css">
+
+
+
+</head>
+<body>
+
+    <div id="main-app-content">
+        <header id="app-header">
+            <div class="header-left">
+                <span class="app-title">家書 Jiashu｜用一段話畫出一個家</span>
+            </div>
+
+            <nav id="view-switcher" class="desktop-view-switcher">
+                <button class="tab-btn active" data-view="canvas">畫布</button>
+                <button class="tab-btn" data-view="editor">編輯</button>
+            </nav>
+
+            <div id="mobile-view-switcher" class="mobile-view-switcher">
+                <button id="mobile-view-toggle-btn" class="mobile-view-toggle-btn">
+                    <span id="current-mobile-view-label">畫布</span> <span class="dropdown-arrow">▼</span>
+                </button>
+                <div id="mobile-view-options" class="mobile-view-options">
+                    <a href="#" class="mobile-view-option" data-view="canvas">畫布</a>
+                    <a href="#" class="mobile-view-option" data-view="editor">家書編輯器</a>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <button id="ai-settings-btn" class="ai-settings-btn" title="Google AI Studio API 設定">API 設定</button>
+            </div>
+        </header>
+
+        <main id="view-container">
+            <div id="family-tree-container" class="view-panel active">
+                <p style="text-align: center; padding-top: 50px; color: var(--text-color-secondary);">家系圖畫布區域</p>
+            </div>
+             <div id="ftdl-editor-view" class="view-panel">
+                <!-- Error messages will be injected here by JS -->
+                <div class="editor-controls-header">
+                    <button id="execute-ftdl-btn" class="button">
+                        執行
+                    </button>
+                    <button id="save-ftdl-btn" class="button button-secondary" style="margin-left: 10px;">
+                        儲存
+                    </button>
+                </div>
+                <div class="editor-container">
+                    <div id="line-numbers"></div>
+                    <textarea id="ftdl-editor" placeholder="在此輸入FTDL代碼..."></textarea>
+                </div>
+                <div id="suggestion-box" style="display: none;"></div>
+            </div>
+        </main>
+
+        <div id="dialogue-container">
+            <textarea id="user-text-input" placeholder="用一般文字描述家庭或研究情境，例如：父親 1968 年生、與母親婚姻品質良好……（Enter 送出，Shift+Enter 換行）" rows="1"></textarea>
+            <button id="run-dialogue-btn">執行</button>
+        </div>
+        
+
+        
+        
+    </div>
+    <script src="config.js"></script>
+    <script src="base.js"></script>
+    <script src="grammar.js"></script>
+    <script src="person.js"></script>
+    <script src="research.js"></script>
+    <script src="relationship.js"></script>
+    <script src="treeSelector.js"></script>
+    <script src="metadata.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+    <script src="ai.js"></script>
+
+</body>
+</html>

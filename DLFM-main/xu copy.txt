@@ -1,0 +1,38 @@
+person { id: 	p14	; name: 	person14	; gender:	female	; }
+
+person { id: 	p11	; name: 	person11	; gender:	male	; }
+
+person { id: 	p13	; name: 	person13	; gender:	male	; }
+
+person { id: 	p4	; name: 	person4	; gender:	female	; }
+
+person { id: 	p12	; name: 	person12	; gender:	female	; }
+
+person { id: 	p5	; name: 	person5	; gender:	male	; }
+
+person { id: 	p3	; name: 	person3	; gender:	male	; }
+
+relationship {
+    partners: [p13, p14];
+    children: [p11];
+}
+
+relationship {
+    partners: [p11, p12];
+    children: [p4];
+}
+
+relationship {
+    partners: [p15, p16];
+    children: [p13];
+}
+
+relationship {
+    partners: [p3, p4];
+    children: [p5];
+}
+
+relationship {
+    partners: [p1, p2];
+    children: [p3];
+}
