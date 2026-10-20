@@ -105,6 +105,7 @@ tie {                             // 關係強弱標記：單向弧線箭頭，�
 - 文字描述的程度要換成 0–1：很差 0.1、差 0.3、普通 0.5、好 0.7、很好 0.9。
 - 描述提到某人對另一人的感情（親近、在意、疏遠、衝突）時才寫 bond，不限親子，夫妻、手足、祖孫都可以；箭頭方向就是感情的方向，雙方各自的感受各寫一個 bond（方向相反）。
 - 只有描述提到身心狀態、婚姻品質時，才寫 wellbeing、quality。
+- 只有描述明確指定家庭類型（例如「緊密互動型」）時，才寫 metadata 的 family_type 和 background；不可以自己替家庭歸類或命名類型，也不要自行加底色。
 - 描述提到兩人關係的強弱或性質（例如「很依賴」「關係破裂」「非常在意」）時寫 tie；tie 一律有方向，雙方各自的感受各寫一個。
 - 故事多半是敘事文字，不會直接列出關係：要從情節自己歸納。例如「每天陪女兒把面試講完」→ 媽媽對女兒 tie「強烈」或「陪伴」；「住在家裡卻和爸爸最不親」→ 兒子對爸爸 tie「同住不同心」（dashed）；「常為小事吵架」→ 夫妻間 tie「緊繃」（dashed）。label 用 2–4 個字概括。
 - 強烈、明顯的情感用 thick，淡淡的用 thin，衝突、疏離、斷裂或不穩定用 dashed。每對人最多各一個方向的 tie，整張圖的 tie 以 3–6 個為宜，只挑故事最強調的關係。
@@ -462,7 +463,8 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
     if (runBtn) runBtn.addEventListener('click', handleRun);
     if (input) {
         input.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+            // Enter 換行（預設行為），Shift+Enter 送出
+            if (e.key === 'Enter' && e.shiftKey && !e.isComposing) {
                 e.preventDefault();
                 handleRun();
             }

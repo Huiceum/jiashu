@@ -23,8 +23,9 @@
 
     const BOND_STYLES = ['solid', 'dashed', 'dotted', 'zigzag', 'cutoff', 'double'];
     const TIE_LINES = ['thick', 'thin', 'dashed'];
-    // 關係線一律同一色：箭頭＝感情的方向、粗細＝感情的深厚，不以顏色區分身分
-    const TIE_COLOR = INK_SOFT;
+    // 關係線一律同一色：箭頭＝感情的方向、粗細＝感情的深厚，不以顏色區分身分。
+    // 用 currentColor 跟著畫布的文字色走（theme.css 的 --ftdl-ink-soft），深色模式會自動變淺
+    const TIE_COLOR = 'currentColor';
 
     function resolveColor(value) {
         if (value === undefined || value === null) return null;
@@ -62,6 +63,12 @@
         const minC = Math.min(...hexToRgb(full));
         const amount = minC >= 230 ? 0 : Math.max(0.45, (232 - minC) / (255 - minC));
         return lighten(full, amount);
+    }
+
+    // 家庭類型底色實際使用的顏色：淺色模式就是淡化後的原色，
+    // 深色模式和畫布底色混合（--ftdl-bg-mix），匯出時又回到淺色
+    function familyBackgroundFill(hex) {
+        return `color-mix(in srgb, ${backgroundTint(hex)} var(--ftdl-bg-mix), var(--ftdl-canvas-bg))`;
     }
 
     function wellbeingColor(value) {
@@ -151,6 +158,41 @@
         return Math.min(tx, ty);
     }
 
+    // 弧線避開節點：從原本的彎度開始，依序試同一側更彎、再試另一側，
+    // 沿二次曲線取點檢查是否穿過其他人的節點（外擴一點邊距），選第一個不碰到的；
+    // 都會碰到時選碰到最少的。回傳的 bend 可能是負的（彎向另一側）。
+    function chooseBend(a, b, personsMap, baseBend, nx, ny) {
+        const margin = 10;
+        const obstacles = Object.values(personsMap).filter(p => p !== a && p !== b && p.el && !isNaN(p.x))
+            .map(p => [p.x - margin, p.y - margin, p.x + (p.width || 70) + margin, p.y + (p.height || 70) + margin]);
+        if (!obstacles.length) return baseBend;
+        const inside = (p, x, y) => {
+            const hw = (p.width || 70) / 2 + 2, hh = (p.height || 70) / 2 + 2;
+            return Math.abs(x - p.cx) < hw && Math.abs(y - p.cy) < hh;
+        };
+        const hits = bend => {
+            const cx = (a.cx + b.cx) / 2 + nx * bend, cy = (a.cy + b.cy) / 2 + ny * bend;
+            const hitSet = new Set();
+            for (let i = 1; i < 60; i++) {
+                const t = i / 60, u = 1 - t;
+                const x = u * u * a.cx + 2 * u * t * cx + t * t * b.cx;
+                const y = u * u * a.cy + 2 * u * t * cy + t * t * b.cy;
+                if (inside(a, x, y) || inside(b, x, y)) continue;
+                obstacles.forEach((o, k) => { if (x > o[0] && x < o[2] && y > o[1] && y < o[3]) hitSet.add(k); });
+            }
+            return hitSet.size;
+        };
+        const factors = [1, 1.6, 2.4, 3.4, -1, -1.6, -2.4, -3.4, 4.6, -4.6, 6, -6];
+        let best = baseBend, bestHits = Infinity;
+        for (const f of factors) {
+            const bend = baseBend * f;
+            const h = hits(bend);
+            if (h === 0) return bend;
+            if (h < bestHits) { bestHits = h; best = bend; }
+        }
+        return best;
+    }
+
     function svgEl(tag, attrs) {
         const el = document.createElementNS(SVG_NS, tag);
         for (const k in attrs) el.setAttribute(k, attrs[k]);
@@ -199,7 +241,7 @@
         const len = Math.hypot(dx, dy);
         if (len < 1) return null;
         const ux = dx / len, uy = dy / len;
-        const nx = -uy, ny = ux;
+        let nx = -uy, ny = ux;
         const offset = hasReverse ? 5 : 0;
 
         const def = bondDefaultColor(bond, personsMap);
@@ -214,7 +256,8 @@
         // 方向相反的兩條線會各自彎向自己的右側而自然分開。
         const curved = ['solid', 'dashed', 'dotted'].includes(bond.style);
         if (curved) {
-            const bend = Math.min(36, 14 + len * 0.06) + (hasReverse ? 4 : 0);
+            let bend = chooseBend(a, b, personsMap, Math.min(36, 14 + len * 0.06) + (hasReverse ? 4 : 0), nx, ny);
+            if (bend < 0) { bend = -bend; nx = -nx; ny = -ny; }
             const cx = (a.cx + b.cx) / 2 + nx * bend, cy = (a.cy + b.cy) / 2 + ny * bend;
             const su = norm(cx - a.cx, cy - a.cy), eu = norm(b.cx - cx, b.cy - cy);
             const gA = edgeDistance(a, su[0], su[1]) + 4, gB = edgeDistance(b, -eu[0], -eu[1]) + 4;
@@ -286,12 +329,13 @@
         const len = Math.hypot(dx, dy);
         if (len < 1) return false;
         const ux = dx / len, uy = dy / len;
-        const nx = -uy, ny = ux;
+        let nx = -uy, ny = ux;
 
         const color = lineColor || tie.color || TIE_COLOR;
         const width = widthOverride || (tie.line === 'thick' ? 4.5 : tie.line === 'dashed' ? 2.2 : 1.8);
         const head = 7 + width * 1.2;
-        const bend = Math.max(34, Math.min(80, 26 + len * 0.18)) + extraBend;
+        let bend = chooseBend(a, b, personsMap, Math.max(34, Math.min(80, 26 + len * 0.18)) + extraBend, nx, ny);
+        if (bend < 0) { bend = -bend; nx = -nx; ny = -ny; }
 
         const cx = (a.cx + b.cx) / 2 + nx * bend, cy = (a.cy + b.cy) / 2 + ny * bend;
         const su = norm(cx - a.cx, cy - a.cy), eu = norm(b.cx - cx, b.cy - cy);
@@ -315,8 +359,8 @@
             const off = 11 + width;
             const text = bondLabel(mx + nx * off, my + ny * off, tie.label);
             text.setAttribute('class', 'tie-label');
-            text.setAttribute('fill', INK_SOFT);
-            text.setAttribute('stroke', haloColor);
+            text.style.fill = 'var(--ftdl-ink-soft)';
+            text.style.stroke = haloColor;
             text.setAttribute('stroke-width', '4');
             text.setAttribute('stroke-linejoin', 'round');
             text.setAttribute('paint-order', 'stroke');
@@ -373,9 +417,10 @@
             add(swatchSvg(`<defs><linearGradient id="lg-wb" x1="0" x2="1">${stops}</linearGradient></defs><rect x="0" y="3" width="44" height="12" rx="3" fill="url(#lg-wb)"/>`, 44), '節點顏色＝身心（灰低、橘高）');
         }
         if (info.marriage) add(swatchSvg(`<line x1="2" y1="9" x2="32" y2="9" stroke="${PALETTE.amber}" stroke-width="3"/>`), info.quality ? '橫線＝夫妻，粗細＝婚姻品質' : '橫線＝夫妻');
+        if (info.consanguineous) add(swatchSvg(`<line x1="2" y1="6" x2="32" y2="6" stroke="${PALETTE.amber}" stroke-width="2"/><line x1="2" y1="12" x2="32" y2="12" stroke="${PALETTE.amber}" stroke-width="2"/>`), '雙橫線＝血親婚姻');
         if (info.partnership) add(swatchSvg(`<line x1="2" y1="9" x2="32" y2="9" stroke="${PALETTE.amber}" stroke-width="2.5" stroke-dasharray="5 4"/>`), '虛橫線＝伴侶／同居');
-        if (info.divorced) add(swatchSvg(`<line x1="2" y1="9" x2="32" y2="9" stroke="${PALETTE.amber}" stroke-width="2"/><path d="M10 14 L16 4 M15 14 L21 4" stroke="${INK}" stroke-width="1.6"/>`), '雙斜線＝離婚');
-        if (info.separated) add(swatchSvg(`<line x1="2" y1="9" x2="32" y2="9" stroke="${PALETTE.amber}" stroke-width="2"/><path d="M14 4 L20 14" stroke="${INK}" stroke-width="1.6"/>`), '單斜線＝分居');
+        if (info.divorced) add(swatchSvg(`<line x1="2" y1="9" x2="32" y2="9" stroke="${PALETTE.amber}" stroke-width="2"/><path d="M10 14 L16 4 M15 14 L21 4" stroke="currentColor" stroke-width="1.6"/>`), '雙斜線＝離婚');
+        if (info.separated) add(swatchSvg(`<line x1="2" y1="9" x2="32" y2="9" stroke="${PALETTE.amber}" stroke-width="2"/><path d="M14 4 L20 14" stroke="currentColor" stroke-width="1.6"/>`), '單斜線＝分居');
 
         const L = TIE_COLOR;
         if (info.bondKinds.size) add(arrowSwatch(L), '箭頭＝感情的方向（A → B：A 對 B 的感情）');
@@ -386,7 +431,7 @@
         if (info.bondStyles.has('cutoff')) add(swatchSvg(`<line x1="2" y1="9" x2="13" y2="9" stroke="${L}" stroke-width="2"/><line x1="21" y1="9" x2="32" y2="9" stroke="${L}" stroke-width="2"/><path d="M14 2 L14 16 M20 2 L20 16" stroke="${L}" stroke-width="2"/>`), '截斷線＝斷絕往來');
         if (info.bondStyles.has('double')) add(swatchSvg(`<line x1="2" y1="6" x2="32" y2="6" stroke="${L}" stroke-width="2"/><line x1="2" y1="12" x2="32" y2="12" stroke="${L}" stroke-width="2"/>`), '雙線＝非常親密');
         if (info.labels) add(swatchSvg(`<text x="17" y="13" text-anchor="middle" font-size="11" fill="${L}">字</text>`), '線旁文字＝關係性質');
-        if (info.proband) add(swatchSvg(`<rect x="9.5" y="1.5" width="15" height="15" rx="2" fill="${PALETTE.mist}" stroke="${INK}" stroke-width="2"/>`), '深棕外框＝案主');
+        if (info.proband) add(swatchSvg(`<rect x="9.5" y="1.5" width="15" height="15" rx="2" fill="${PALETTE.mist}" stroke="currentColor" stroke-width="2"/>`), '粗外框＝案主');
         if (info.chronic) add(swatchSvg(`<rect x="10" y="2" width="14" height="14" fill="${PALETTE.mist}"/><rect x="17" y="2" width="7" height="7" fill="${INK}" fill-opacity="0.35"/>`), '右上角＝慢性病');
         if (info.disability) add(swatchSvg(`<rect x="10" y="2" width="14" height="14" fill="${PALETTE.mist}"/><rect x="17" y="2" width="7" height="14" fill="${INK}" fill-opacity="0.35"/>`), '右半邊＝身心障礙');
         if (info.deceased) add(swatchSvg(`<rect x="10" y="2" width="14" height="14" fill="${PALETTE.mist}"/><path d="M10 2 L24 16 M24 2 L10 16" stroke="${INK_SOFT}" stroke-width="1.5"/>`), 'X＝已過世');
@@ -412,6 +457,7 @@
                 width: layout.bounds.maxX - layout.bounds.minX, height: layout.bounds.maxY - layout.bounds.minY,
                 fill: backgroundTint(meta.background)
             });
+            panel.style.fill = familyBackgroundFill(meta.background);
             svg.insertBefore(panel, svg.firstChild);
         }
 
@@ -438,7 +484,7 @@
         const tieLayer = svgEl('g', { class: 'tie-layer' });
         svg.appendChild(tieLayer);
         const tieLines = new Set();
-        const halo = meta.background ? backgroundTint(meta.background) : '#FBF8F4';
+        const halo = meta.background ? familyBackgroundFill(meta.background) : 'var(--ftdl-canvas-bg)';
         ties.forEach(t => {
             const bond = bondByKey.get(pairKey(t.from, t.to));
             const color = t.color || (bond && bond.color) || TIE_COLOR;
@@ -484,6 +530,7 @@
             genders: new Set(persons.map(p => p.el ? (p.el.classList.contains('male') ? 'male' : p.el.classList.contains('female') ? 'female' : 'other') : 'other')),
             wellbeing: persons.some(p => p.el && p.el.dataset.wellbeing !== undefined),
             marriage: relationships.some(r => r.partners.length > 1 && (r.type || 'marriage') === 'marriage'),
+            consanguineous: relationships.some(r => r.consanguineous),
             partnership: relationships.some(r => r.partners.length > 1 && r.type === 'partnership'),
             quality: relationships.some(r => parseUnit(r.quality) !== null),
             divorced: relationships.some(r => r.status === 'divorced'),
@@ -516,6 +563,136 @@
             panel.setAttribute('height', needed - layout.bounds.minY);
             panel.setAttribute('width', panelRight - layout.bounds.minX);
         }
+    }
+
+    // --- 匯出時附上的人物詳細資料 ---
+    const DETAILS_STORAGE = 'ftdlExportDetails';
+    let exportDetails = false;
+    try { exportDetails = localStorage.getItem(DETAILS_STORAGE) === '1'; } catch (e) { /* 無法使用 localStorage */ }
+
+    function parseBlocks(ftdlText, type) {
+        const re = new RegExp(`(^|[\\s;}])${type}\\s*\\{([\\s\\S]*?)\\}`, 'g');
+        const blocks = [];
+        let m;
+        while ((m = re.exec(ftdlText)) !== null) blocks.push(parseProps(m[2]));
+        return blocks;
+    }
+    const parseIdList = v => (v || '').replace(/[\[\]]/g, '').split(',').map(x => x.trim()).filter(Boolean);
+    const birthYear = p => { const m = String(p.birth || '').match(/\d{4}/); return m ? parseInt(m[0], 10) : null; };
+    const isTrue = v => String(v).toLowerCase() === 'true';
+
+    function wellbeingWord(v) {
+        const t = parseUnit(v);
+        if (t === null) return null;
+        const word = t >= 0.8 ? '很好' : t >= 0.6 ? '好' : t >= 0.4 ? '普通' : t >= 0.2 ? '差' : '很差';
+        return `${word}（${t}）`;
+    }
+
+    // 只列出目前畫面上有顯示的人；依年齡由大到小排序，配偶緊接在一起
+    function buildDetailsPanel(wrapper, treeHeight) {
+        const editor = document.getElementById('ftdl-editor');
+        const ftdlText = editor ? editor.value : '';
+        const figures = new Map(Array.from(wrapper.querySelectorAll('.person-figure')).map(el => [el.dataset.personId, el]));
+        const people = new Map(parseBlocks(ftdlText, 'person').filter(p => p.id && figures.has(p.id)).map(p => [p.id, p]));
+        if (people.size === 0) return null;
+        const rels = parseBlocks(ftdlText, 'relationship').map(r => ({
+            ...r,
+            partners: parseIdList(r.partners).filter(id => people.has(id)),
+            children: parseIdList(r.children).filter(id => people.has(id))
+        })).filter(r => r.partners.length > 0);
+
+        const nameOf = id => people.get(id).name || id;
+        const genderOf = id => (people.get(id).gender || '').toLowerCase();
+        const pick = (id, male, female, other) => ({ male, female }[genderOf(id)] || other);
+        const joinNames = ids => ids.map(nameOf).join('、');
+
+        // 排序：出生年由早到晚（年齡由大到小），沒有出生年的放最後；每個人後面緊接著他的配偶
+        const spousesOf = id => rels.filter(r => r.partners.includes(id)).flatMap(r => r.partners.filter(pid => pid !== id));
+        const byAge = [...people.keys()].sort((a, b) => (birthYear(people.get(a)) ?? 99999) - (birthYear(people.get(b)) ?? 99999));
+        const ordered = [];
+        const placed = new Set();
+        byAge.forEach(id => {
+            if (placed.has(id)) return;
+            ordered.push(id); placed.add(id);
+            spousesOf(id).sort((a, b) => byAge.indexOf(a) - byAge.indexOf(b)).forEach(sid => {
+                if (!placed.has(sid)) { ordered.push(sid); placed.add(sid); }
+            });
+        });
+
+        const panel = document.createElement('div');
+        panel.className = 'ftdl-details';
+        const heading = document.createElement('div');
+        heading.className = 'ftdl-details-heading';
+        heading.textContent = '人物資料（依年齡排序）';
+        panel.appendChild(heading);
+        const grid = document.createElement('div');
+        grid.className = 'ftdl-details-grid';
+        panel.appendChild(grid);
+
+        let estimatedHeight = 0;
+        ordered.forEach(id => {
+            const p = people.get(id);
+            const fig = figures.get(id);
+            const card = document.createElement('div');
+            card.className = 'ftdl-detail-card';
+            const fill = getComputedStyle(fig).backgroundColor;
+            card.style.backgroundColor = fill && fill !== 'rgba(0, 0, 0, 0)' && fill !== 'transparent' ? fill : '#E9E1D8';
+
+            const head = document.createElement('div');
+            head.className = 'ftdl-detail-name';
+            head.textContent = `${p.name || id}${isTrue(p.proband) ? '（案主）' : ''}`;
+            card.appendChild(head);
+
+            const lines = [];
+            const genderText = pick(id, '男', '女', '其他／不詳');
+            const ageText = (fig.querySelector('.person-age') || {}).textContent;
+            const by = birthYear(p);
+            const dy = (String(p.death || '').match(/\d{4}/) || [])[0];
+            const hasAge = ageText && ageText !== 'N/A';
+            if (p.death) lines.push(`${genderText}，歿${hasAge ? `，享年 ${ageText} 歲` : ''}${by ? `（${by}${dy ? `–${dy}` : ''}）` : ''}`);
+            else lines.push(`${genderText}${hasAge ? `，${ageText} 歲` : '，年齡不詳'}${by ? `（${by} 年生）` : ''}`);
+
+            rels.filter(r => r.children.includes(id)).forEach(r => {
+                lines.push(`${joinNames(r.partners)}的${pick(id, '兒子', '女兒', '孩子')}`);
+            });
+            rels.filter(r => r.partners.includes(id)).forEach(r => {
+                const others = r.partners.filter(pid => pid !== id);
+                if (others.length) {
+                    let role;
+                    if (r.type === 'partnership') role = '伴侶';
+                    else if (r.status === 'divorced') role = pick(id, '前夫', '前妻', '前配偶');
+                    else role = pick(id, '丈夫', '妻子', '配偶');
+                    const since = (String(r.start_date || '').match(/\d{4}/) || [])[0];
+                    const until = (String(r.end_date || '').match(/\d{4}/) || [])[0];
+                    const years = since ? `（${since}${until ? `–${until}` : ''}）` : '';
+                    lines.push(`${joinNames(others)}的${role}${years}`);
+                }
+                if (r.children.length) lines.push(`${joinNames(r.children)}的${pick(id, '父親', '母親', '家長')}`);
+            });
+
+            const health = [];
+            if (isTrue(p.chronic)) health.push('慢性病');
+            if (isTrue(p.Disability)) health.push('身心障礙');
+            if (health.length) lines.push(health.join('、'));
+            const wb = wellbeingWord(p.wellbeing);
+            if (wb) lines.push(`身心狀態：${wb}`);
+            if (p.note) lines.push(`備註：${p.note}`);
+
+            lines.forEach(text => {
+                const line = document.createElement('div');
+                line.className = 'ftdl-detail-line';
+                line.textContent = text;
+                card.appendChild(line);
+            });
+            grid.appendChild(card);
+            estimatedHeight += 34 + lines.length * 19 + 10;
+        });
+        // 卡片依序由上往下排，一欄排滿（約與家系圖同高）再換下一欄；
+        // 各欄獨立往下接，不跟其他欄對齊，不留空白
+        const columns = Math.max(1, Math.ceil(estimatedHeight / Math.max(400, treeHeight - 40)));
+        grid.style.columnCount = String(columns);
+        grid.style.width = `${columns * 230 + (columns - 1) * 12}px`;
+        return panel;
     }
 
     // --- 匯出 ---
@@ -552,13 +729,22 @@
         if (cutout) {
             // 去背：拿掉家庭類型底色面板，標籤的描邊改成透明，只留下人物、線條、文字與圖例
             clone.querySelectorAll('.family-background').forEach(el => el.remove());
-            clone.querySelectorAll('.tie-label').forEach(el => el.setAttribute('stroke', 'none'));
+            clone.querySelectorAll('.tie-label').forEach(el => { el.setAttribute('stroke', 'none'); el.style.stroke = 'none'; });
             clone.style.backgroundColor = 'transparent';
             clone.querySelectorAll('.ftdl-legend .legend-item').forEach(el => {
                 if (el.textContent.includes('底色')) el.remove();
             });
         }
-        box.appendChild(clone);
+        if (exportDetails) {
+            const row = document.createElement('div');
+            row.className = 'ftdl-export-row';
+            row.appendChild(clone);
+            const panel = buildDetailsPanel(wrapper, parseFloat(wrapper.style.height) || wrapper.offsetHeight);
+            if (panel) row.appendChild(panel);
+            box.appendChild(row);
+        } else {
+            box.appendChild(clone);
+        }
 
         box.style.position = 'fixed';
         box.style.left = '-100000px';
@@ -577,10 +763,20 @@
         const label = button.textContent;
         button.disabled = true;
         button.textContent = '匯出中…';
-        const fn = kind === 'svg' ? window.htmlToImage.toSvg : window.htmlToImage.toPng;
+        const isPdf = kind === 'pdf';
+        if (isPdf && !(window.jspdf && window.jspdf.jsPDF)) {
+            node.remove();
+            button.disabled = false;
+            button.textContent = label;
+            alert('PDF 元件尚未載入（需要網路連線載入 jsPDF）。');
+            return;
+        }
+        // PDF：先轉成白底 JPEG 再放進 PDF（白底才不會在 PDF 裡變黑，JPEG 檔案也比較小）
+        const fn = kind === 'svg' ? window.htmlToImage.toSvg : isPdf ? window.htmlToImage.toJpeg : window.htmlToImage.toPng;
         // 匯出容器放在畫面外；輸出時把根節點的位置改回 0，內容才會落在畫布內
         const opts = {
-            pixelRatio: 3,
+            pixelRatio: isPdf ? 2.5 : 3,
+            ...(isPdf ? { backgroundColor: '#FFFFFF', quality: 0.92 } : {}),
             cacheBust: true,
             width: node.offsetWidth,
             height: node.offsetHeight,
@@ -594,11 +790,20 @@
                 console.warn('嵌入字型失敗，改用系統字型匯出：', fontErr);
                 url = await fn(node, { ...opts, skipFonts: true });
             }
-            const a = document.createElement('a');
             const title = (document.querySelector('#metadata-display-stack .metadata-title') || {}).textContent || 'genogram';
-            a.download = `${title.trim() || 'genogram'}${cutout ? '_去背' : ''}.${kind}`;
-            a.href = url;
-            a.click();
+            const fileName = `${title.trim() || 'genogram'}${cutout ? '_去背' : ''}.${kind}`;
+            if (isPdf) {
+                // 一頁 PDF，頁面大小跟著圖的比例（以 96 dpi 換算成 pt）
+                const w = node.offsetWidth * 0.75, h = node.offsetHeight * 0.75;
+                const pdf = new window.jspdf.jsPDF({ orientation: w >= h ? 'landscape' : 'portrait', unit: 'pt', format: [w, h], compress: true });
+                pdf.addImage(url, 'JPEG', 0, 0, w, h);
+                pdf.save(fileName);
+            } else {
+                const a = document.createElement('a');
+                a.download = fileName;
+                a.href = url;
+                a.click();
+            }
         } catch (err) {
             console.error(err);
             alert('匯出失敗：' + (err && err.message ? err.message : err));
@@ -615,7 +820,8 @@
         [
             ['png', '匯出 PNG', false, 'png', '匯出 PNG（3 倍解析度，保留家庭類型底色）'],
             ['png', '匯出 PNG（去背）', true, 'png-cutout', '匯出完全透明背景的 PNG（3 倍解析度，不含家庭類型底色）'],
-            ['svg', '匯出 SVG', false, 'svg', '匯出 SVG']
+            ['svg', '匯出 SVG', false, 'svg', '匯出 SVG'],
+            ['pdf', '匯出 PDF', false, 'pdf', '匯出 PDF（白底，一頁，頁面大小跟著家系圖）']
         ].forEach(([kind, text, cutout, id, title]) => {
             const btn = document.createElement('button');
             btn.className = 'zoom-btn export-btn';
@@ -626,6 +832,29 @@
             btn.addEventListener('mousedown', e => e.stopPropagation());
             controls.appendChild(btn);
         });
+
+        // 是否在匯出的圖右側附上人物詳細資料：按一下切換，開啟時按鈕變色
+        const toggle = document.createElement('button');
+        toggle.className = 'zoom-btn export-btn export-details-toggle';
+        toggle.id = 'export-details-toggle';
+        toggle.type = 'button';
+        toggle.textContent = '附詳細資料';
+        const sync = () => {
+            toggle.classList.toggle('is-on', exportDetails);
+            toggle.setAttribute('aria-pressed', String(exportDetails));
+            toggle.title = exportDetails
+                ? '匯出時會在家系圖右側附上畫面上每個人的詳細資料（再按一下取消）'
+                : '按一下：匯出時在家系圖右側附上畫面上每個人的詳細資料';
+        };
+        sync();
+        toggle.addEventListener('click', e => {
+            e.stopPropagation();
+            exportDetails = !exportDetails;
+            try { localStorage.setItem(DETAILS_STORAGE, exportDetails ? '1' : '0'); } catch (err) { /* 忽略 */ }
+            sync();
+        });
+        toggle.addEventListener('mousedown', e => e.stopPropagation());
+        controls.appendChild(toggle);
     }
 
     document.addEventListener('DOMContentLoaded', addExportButtons);

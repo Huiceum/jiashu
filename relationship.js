@@ -189,6 +189,39 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        // 雙方都有父母在圖中的婚姻（例如表兄妹結婚）改用例外畫法：
+        // 夫妻各自留在原生家庭底下，婚姻線從兩人之間拉過去，子女排在兩人中間下方。
+        // 雙方有共同祖先時是血親婚姻，婚姻線畫成雙線。
+        const ancestorsOf = (id, seen = new Set()) => {
+            const rel = personsMap[id] && personsMap[id].parentsRelationship;
+            if (!rel) return seen;
+            rel.partners.forEach(pid => { if (!seen.has(pid)) { seen.add(pid); ancestorsOf(pid, seen); } });
+            return seen;
+        };
+        relationships.forEach(rel => {
+            if (rel.partners.length !== 2 || !rel.partners.every(id => personsMap[id])) return;
+            const [a, b] = rel.partners;
+            if (!personsMap[a].parentsRelationship || !personsMap[b].parentsRelationship) return;
+            rel.crossFamily = true;
+            const ancestorsA = ancestorsOf(a);
+            const ancestorsB = ancestorsOf(b);
+            const common = new Set([...ancestorsB].filter(id => ancestorsA.has(id)));
+            rel.consanguineous = common.size > 0;
+            // 讓夫妻排在各自手足的內側、彼此相鄰：
+            // a 那一支在每一代都排到最右邊，b 那一支排到最左邊；
+            // 在共同祖先的子女中，a 那一支緊接著 b 那一支
+            const markLine = (startId, ownAncestors, sideKey, meetKey) => {
+                [startId, ...ownAncestors].forEach(id => {
+                    if (common.has(id)) return;
+                    const node = personsMap[id];
+                    if (!node || !node.parentsRelationship) return;
+                    node.siblingOrderKey = node.parentsRelationship.partners.some(pid => common.has(pid)) ? meetKey : sideKey;
+                });
+            };
+            markLine(a, ancestorsA, 3, 1);
+            markLine(b, ancestorsB, -1, 2);
+        });
+
         Object.values(personsMap).forEach(person => {
             person.marriages.sort((a, b) => {
                 const dateA = parseFlexibleDate(a.start_date);
@@ -246,7 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const layout = { personPositions: {}, lineDefinitions: [], bounds: { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }};
         const positionedPersons = new Set();
-        const potentialRoots = Object.values(personsMap).filter(p => !p.parentsRelationship);
+        // 嫁娶進來的配偶（自己沒有父母在圖中、但每段婚姻的另一半都有）不自成一棵樹，
+        // 等另一半排好時再跟著排；否則例外畫法的婚姻底下的子女會先被配偶帶走
+        const isMarriedIn = p => p.marriages.length > 0 && p.marriages.every(m => m.partners.some(pid => pid !== p.id && personsMap[pid] && personsMap[pid].parentsRelationship));
+        const potentialRoots = Object.values(personsMap).filter(p => !p.parentsRelationship && !isMarriedIn(p));
         potentialRoots.sort((a, b) => a.generation - b.generation || a.id.localeCompare(b.id));
          let currentTreeTargetX = VERTICAL_UNIT;
 
@@ -255,6 +291,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const treeMaxX = calculateFinalPositions(root, personsMap, currentTreeTargetX, generationYs, layout, positionedPersons);
                 currentTreeTargetX = treeMaxX + INTER_TREE_SPACING;
              }
+        });
+
+        relationships.filter(rel => rel.crossFamily).forEach(rel => {
+            const maxX = placeCrossFamilyMarriage(rel, personsMap, generationYs, layout, positionedPersons);
+            if (maxX !== undefined) currentTreeTargetX = Math.max(currentTreeTargetX, maxX + INTER_TREE_SPACING);
         });
 
          Object.values(personsMap).forEach(p => {
@@ -403,7 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             const partners = marriage.partners || [];
                             const children = marriage.children || [];
                             partners.forEach(partnerId => {
-                                if (partnerId !== personId) {
+                                // 例外畫法的婚姻：夫妻各自維持原生家庭的世代，不互相對齊
+                                if (partnerId !== personId && !marriage.crossFamily) {
                                     const isProblematic = problematicRelations.has(`${personId}-${partnerId}`) || problematicRelations.has(`${partnerId}-${personId}`);
                                     if (isProblematic) {
                                         if (!generationChangeHistory.has(partnerId)) generationChangeHistory.set(partnerId, 0);
@@ -418,8 +460,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                 }
                             });
+                            // 同一對父母的子女在同一代：取「父母 + 1」與手足目前世代的最大值
+                            const siblingGeneration = Math.max(personGeneration + 1, ...children.map(cId => generationMap.has(cId) ? generationMap.get(cId) : -1));
+                            // 沒有父母的人（例如姻親的父母）往下對齊到子女的上一代
+                            if (!person.parentsRelationship && personGeneration < siblingGeneration - 1 && children.length > 0) {
+                                generationMap.set(personId, siblingGeneration - 1);
+                                changed = true;
+                            }
                             children.forEach(childId => {
-                                const childGeneration = personGeneration + 1;
+                                const childGeneration = siblingGeneration;
                                 const isProblematic = problematicRelations.has(`${personId}-${childId}`) || problematicRelations.has(`${childId}-${personId}`);
                                 if (isProblematic) {
                                     if (!generationChangeHistory.has(childId)) generationChangeHistory.set(childId, 0);
@@ -474,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
         person.layoutData.totalFamilyUnitsBlockWidth = 0;
         person.layoutData.familyUnits = [];
 
-        const sortedMarriages = [...person.marriages].sort((a,b) => person.marriageOrder[a.id] - person.marriageOrder[b.id]);
+        const sortedMarriages = [...person.marriages].filter(m => !m.crossFamily).sort((a,b) => person.marriageOrder[a.id] - person.marriageOrder[b.id]);
 
         sortedMarriages.forEach((marriage) => {
             let childrenTotalEstimatedWidth = 0;
@@ -598,7 +647,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (fu.childrenIds && fu.childrenIds.length > 0) {
-                const children = fu.childrenIds.map(cId => personsMap[cId]).filter(c => c && c.generation !== -1);
+                const children = fu.childrenIds.map(cId => personsMap[cId]).filter(c => c && c.generation !== -1)
+                    .sort((x, y) => (x.siblingOrderKey || 0) - (y.siblingOrderKey || 0));
                 if (children.length > 0) {
                     const pccY1 = fu.marriageY; const pccY2 = fu.marriageY + VERTICAL_UNIT;
                     if (fu.parentMidX !== undefined && !isNaN(fu.parentMidX)) {
@@ -620,8 +670,16 @@ document.addEventListener('DOMContentLoaded', () => {
                          }
                     });
                     currentMaxX = Math.max(currentMaxX, maxXInChildrenBlock);
-                    if (children.length > 1 && firstChildCX !== -1 && lastChildCX !== -1) {
-                         layout.lineDefinitions.push({ type: 'sibling_connector', x1: firstChildCX, y1: pccY2, x2: lastChildCX, y2: pccY2 });
+                    // 橫線要同時涵蓋父母的中點與所有子女：子女若已經因為婚姻被排在別處
+                    // （例如表兄妹結婚），父母往下的線才接得上，不會斷開
+                    if (firstChildCX !== -1 && lastChildCX !== -1) {
+                        const childCXs = children.map(c => personsMap[c.id].cx).filter(cx => cx !== undefined && !isNaN(cx));
+                        const spanXs = fu.parentMidX !== undefined && !isNaN(fu.parentMidX) ? [...childCXs, fu.parentMidX] : childCXs;
+                        const spanMin = Math.min(...spanXs);
+                        const spanMax = Math.max(...spanXs);
+                        if (spanMax - spanMin > 0.5) {
+                            layout.lineDefinitions.push({ type: 'sibling_connector', x1: spanMin, y1: pccY2, x2: spanMax, y2: pccY2 });
+                        }
                     }
                 }
             }
@@ -629,6 +687,78 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         person.layoutData.maxX = currentMaxX;
         return currentMaxX;
+    }
+
+    // 把中線 x 右邊的人與線整體往右推 delta；橫跨中線的線會被拉長
+    function shiftRightOf(x, delta, personsMap, layout, positionedPersons) {
+        Object.values(personsMap).forEach(p => {
+            if (!positionedPersons.has(p.id) || p.cx < x) return;
+            p.x += delta; p.cx += delta;
+            if (p.layoutData.maxX !== undefined) p.layoutData.maxX += delta;
+            if (layout.personPositions[p.id]) layout.personPositions[p.id].x = p.x;
+        });
+        layout.lineDefinitions.forEach(line => {
+            if (line.x1 >= x) line.x1 += delta;
+            if (line.x2 !== undefined && line.x2 >= x) line.x2 += delta;
+        });
+    }
+
+    // 例外畫法：夫妻已經各自在原生家庭底下排好位置，這裡只畫婚姻線並排他們的子女
+    function placeCrossFamilyMarriage(rel, personsMap, generationYs, layout, positionedPersons) {
+        const [p1, p2] = rel.partners.map(id => personsMap[id]);
+        if (!positionedPersons.has(p1.id) || !positionedPersons.has(p2.id)) return undefined;
+        const left = p1.cx <= p2.cx ? p1 : p2;
+        const right = left === p1 ? p2 : p1;
+        // 比兩人中較低的那位再往下錯開一層，避免和兩人之間其他夫妻的婚姻線重疊
+        const marriageY = Math.max(left.y + left.height, right.y + right.height) + VERTICAL_UNIT + MULTI_MARRIAGE_Y_OFFSET;
+        // 婚姻線在需要推開位置之後才畫，長度才正確
+        const drawCouple = () => {
+            [left, right].forEach(p => layout.lineDefinitions.push({ type: 'marriage_extension', x1: p.cx, y1: p.y + p.height, x2: p.cx, y2: marriageY }));
+            layout.lineDefinitions.push({
+                type: 'marriage', x1: left.cx, y1: marriageY, x2: right.cx, y2: marriageY,
+                status: rel.status, relationshipFtdlType: rel.type || 'marriage',
+                startDate: rel.start_date, endDate: rel.end_date, quality: rel.quality,
+                consanguineous: rel.consanguineous
+            });
+        };
+        const children = (rel.children || []).map(id => personsMap[id]).filter(c => c && !positionedPersons.has(c.id));
+        if (children.length === 0) { drawCouple(); return right.cx; }
+
+        let midX = (left.cx + right.cx) / 2;
+        const pccY2 = marriageY + VERTICAL_UNIT;
+        const blockWidth = children.reduce((sum, c) => sum + (c.layoutData.subtreeWidth || c.width), 0) + (children.length - 1) * SIBLING_SPACING;
+        const childGen = Math.min(...children.map(c => c.generation));
+        // 子女那一代以下：中點左邊最右的人、右邊最左的人
+        let leftLimit = -Infinity, rightLimit = Infinity;
+        Object.values(personsMap).forEach(p => {
+            if (!positionedPersons.has(p.id) || p.generation < childGen) return;
+            if (p.cx < midX) leftLimit = Math.max(leftLimit, p.x + p.width + SIBLING_SPACING);
+            else rightLimit = Math.min(rightLimit, p.x - SIBLING_SPACING);
+        });
+        let startX = Math.max(midX - blockWidth / 2, leftLimit);
+        // 放不下時，從中點把右半邊整體往右推，留出子女的位置
+        const overflow = startX + blockWidth - rightLimit;
+        if (overflow > 0) {
+            shiftRightOf(midX, overflow, personsMap, layout, positionedPersons);
+            midX = (left.cx + right.cx) / 2;
+            startX = Math.max(midX - blockWidth / 2, leftLimit);
+        }
+        drawCouple();
+
+        layout.lineDefinitions.push({ type: 'parent_child_connector', x1: midX, y1: marriageY, x2: midX, y2: pccY2 });
+        let currentX = startX;
+        let maxX = right.cx;
+        children.forEach(child => {
+            const childMaxX = calculateFinalPositions(child, personsMap, currentX, generationYs, layout, positionedPersons);
+            maxX = Math.max(maxX, childMaxX);
+            currentX = childMaxX + SIBLING_SPACING;
+            layout.lineDefinitions.push({ type: 'child_extension', x1: child.cx, y1: child.y, x2: child.cx, y2: pccY2 });
+        });
+        const spanXs = [midX, ...children.map(c => c.cx)];
+        if (Math.max(...spanXs) - Math.min(...spanXs) > 0.5) {
+            layout.lineDefinitions.push({ type: 'sibling_connector', x1: Math.min(...spanXs), y1: pccY2, x2: Math.max(...spanXs), y2: pccY2 });
+        }
+        return maxX;
     }
 
     function drawLayout(layout) {
@@ -663,11 +793,15 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (line.type === 'child_extension') klasses.push('child-extension-line');
             else if (line.type === 'sibling_connector') klasses.push('sibling-connector-line');
 
-            const lineEl = drawLine(svg, line.x1, line.y1, line.x2 || line.x1, line.y2 || line.y1, klasses);
-            if (line.type === 'marriage' && window.FTDLResearch) {
-                const q = window.FTDLResearch.parseUnit(line.quality);
-                if (q !== null) lineEl.style.strokeWidth = `${1 + q * 6}px`;
-            }
+            // 血親婚姻：家系圖慣例畫成雙橫線
+            const offsets = line.type === 'marriage' && line.consanguineous ? [-3, 3] : [0];
+            offsets.forEach(dy => {
+                const lineEl = drawLine(svg, line.x1, line.y1 + dy, line.x2 || line.x1, (line.y2 || line.y1) + dy, klasses);
+                if (line.type === 'marriage' && window.FTDLResearch) {
+                    const q = window.FTDLResearch.parseUnit(line.quality);
+                    if (q !== null) lineEl.style.strokeWidth = offsets.length > 1 ? `${1 + q * 2}px` : `${1 + q * 6}px`;
+                }
+            });
 
             if (line.type === 'marriage') {
                 if (line.status) drawMarriageStatusMarker(svg, line);

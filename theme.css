@@ -30,6 +30,13 @@ body.dark-mode {
     --rs-ink-soft: #6B5B4E;
     --rs-paper: #FBF8F4;
 
+    /* 畫布上直接畫在背景上的線條與文字（日期、感情線、圖例、標題），深色模式會換成淺色；
+       人物節點本身維持淺色底、深棕字，兩種模式相同 */
+    --ftdl-ink: var(--rs-ink);
+    --ftdl-ink-soft: var(--rs-ink-soft);
+    --ftdl-canvas-bg: var(--rs-paper);
+    --ftdl-bg-mix: 100%;   /* 家庭類型底色的濃度，深色模式會和畫布底色混合 */
+
     /* 介面 */
     --primary-color: var(--rs-ink);
     --primary-color-darker: #2A211B;
@@ -110,7 +117,7 @@ body.dark-mode {
 }
 
 body { font-family: var(--font-family-sans-serif); color: var(--rs-ink); }
-#family-tree-container { background-color: var(--rs-paper); }
+#family-tree-container { background-color: var(--ftdl-canvas-bg); }
 
 /* --- 人物符號 --- */
 .person-figure,
@@ -148,10 +155,14 @@ body { font-family: var(--font-family-sans-serif); color: var(--rs-ink); }
 .relationship-line { stroke: var(--rs-stone); }
 .marriage-line,
 .partnership-line { stroke: var(--rs-amber); }
-.relationship-date { fill: var(--rs-ink-soft); font-family: var(--font-family-sans-serif); font-size: 11px; }
+.relationship-date { fill: var(--ftdl-ink-soft); font-family: var(--font-family-sans-serif); font-size: 11px; }
 .divorce-marker path,
-.separation-marker path { stroke: var(--rs-ink); }
-.bond-label { fill: var(--rs-ink-soft); font-size: 11px; font-family: var(--font-family-sans-serif); }
+.separation-marker path { stroke: var(--ftdl-ink); }
+.bond-label { fill: var(--ftdl-ink-soft); font-size: 11px; font-family: var(--font-family-sans-serif); }
+
+/* 感情線、關係標記用 currentColor，跟著這裡的顏色走 */
+#relationship-svg-layer { color: var(--ftdl-ink-soft); }
+.proband-outline { stroke: var(--ftdl-ink); }
 
 /* --- 圖例 --- */
 .ftdl-legend {
@@ -161,7 +172,7 @@ body { font-family: var(--font-family-sans-serif); color: var(--rs-ink); }
     gap: 6px 18px;
     font-size: 12px;
     line-height: 1.4;
-    color: var(--rs-ink-soft);
+    color: var(--ftdl-ink-soft);
     font-family: var(--font-family-sans-serif);
     pointer-events: none;
 }
@@ -169,10 +180,10 @@ body { font-family: var(--font-family-sans-serif); color: var(--rs-ink); }
 .ftdl-legend svg { flex-shrink: 0; }
 
 /* --- metadata 標題區 --- */
-#metadata-display-stack > .metadata-title { color: var(--rs-ink); font-weight: 700; }
+#metadata-display-stack > .metadata-title { color: var(--ftdl-ink); font-weight: 700; }
 #metadata-display-stack > .metadata-subtitle,
 #metadata-display-stack > .metadata-author,
-#metadata-display-stack > .metadata-date { color: var(--rs-ink-soft); }
+#metadata-display-stack > .metadata-date { color: var(--ftdl-ink-soft); }
 #metadata-display-stack > .metadata-family-type {
     color: var(--rs-ink);
     background: var(--rs-sand);
@@ -187,8 +198,23 @@ body { font-family: var(--font-family-sans-serif); color: var(--rs-ink); }
 #canvas-zoom-controls .export-btn { padding: 0 10px; width: auto; font-size: 12px; }
 #canvas-zoom-controls .export-btn:disabled { opacity: 0.6; cursor: progress; }
 
+/* 匯出時附上詳細資料的切換按鈕：開啟時變成琥珀色 */
+#canvas-zoom-controls .export-details-toggle.is-on {
+    background-color: var(--rs-amber);
+    border-color: var(--rs-amber);
+    color: #FFFFFF;
+}
+#canvas-zoom-controls .export-details-toggle.is-on:hover { background-color: #C98540; }
+
+#theme-toggle-btn { margin: 0 8px 0 0; }
+
 /* --- 匯出用版面（畫面外） --- */
 .ftdl-export-box {
+    /* 匯出一律用淺色研究配色，深色模式下匯出的圖也能直接放進白底文件 */
+    --ftdl-ink: var(--rs-ink);
+    --ftdl-ink-soft: var(--rs-ink-soft);
+    --ftdl-canvas-bg: var(--rs-paper);
+    --ftdl-bg-mix: 100%;
     display: inline-block;
     padding: 24px;
     color: var(--rs-ink);
@@ -203,6 +229,27 @@ body { font-family: var(--font-family-sans-serif); color: var(--rs-ink); }
 .ftdl-export-head .metadata-family-type { font-size: 13px; color: var(--rs-ink-soft); margin-top: 4px; }
 .ftdl-export-tree { overflow: visible; }
 
+/* 匯出時附上的人物詳細資料：家系圖右側，依年齡排序，一人一張虛線卡片 */
+.ftdl-export-row { display: flex; align-items: flex-start; gap: 36px; }
+.ftdl-details { flex-shrink: 0; padding-top: 24px; color: var(--rs-ink); }
+.ftdl-details-heading { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+.ftdl-details-grid { column-gap: 12px; }
+.ftdl-detail-card {
+    width: 230px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    border: 1.5px dashed var(--rs-ink-soft);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--rs-ink);
+}
+.ftdl-detail-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.ftdl-detail-line { color: var(--rs-ink); }
+
 /* --- 頁首 --- */
 #app-header { background-color: var(--rs-ink); }
 .tab-btn.active { color: var(--rs-ink); }
@@ -215,3 +262,75 @@ html.ftdl-spacious {
     --family-unit-spacing: 90px;
     --generation-gap-lines: 100px;
 }
+
+/* ===== 黑暗模式 =====
+   介面改成深棕色系；畫布背景變深，直接畫在背景上的線條與文字變淺。
+   人物節點維持淺色研究配色（節點上的深棕字才看得清楚），匯出的圖片仍是淺色版。 */
+body.dark-mode {
+    --ftdl-ink: #EFE6DA;
+    --ftdl-ink-soft: #C2B4A5;
+    --ftdl-canvas-bg: #1E1915;
+    --ftdl-bg-mix: 28%;
+
+    --primary-color: #6B5240;
+    --primary-color-darker: #574232;
+    --primary-color-lighter: #8A6E58;
+    --primary-color-pale: #3A2F27;
+    --primary-color-rgb: 107, 82, 64;
+    --accent-color: var(--rs-amber);
+    --background-color: #26201B;
+    --surface-color: #1E1915;
+    --surface-color-hover: #332A23;
+    --text-color-primary: #EFE6DA;
+    --text-color-secondary: #C2B4A5;
+    --text-color-on-primary: #FFFFFF;
+    --text-color-link: var(--rs-apricot);
+    --border-color: #4A3F36;
+    --border-color-light: #3A3029;
+
+    --canvas-bg-color: #1E1915;
+    --zoom-button-bg: #2E2620;
+    --zoom-button-border: #4A3F36;
+    --zoom-button-text: #EFE6DA;
+    --zoom-button-hover-bg: #3A2F27;
+    --zoom-button-active-bg: #574232;
+    --line-color: var(--rs-stone);
+    --marriage-status-marker-color: #EFE6DA;
+
+    --ftdl-editor-bg: #1E1915;
+    --ftdl-editor-text-color: #EFE6DA;
+    --ftdl-line-numbers-bg: #26201B;
+    --ftdl-line-numbers-text-color: #8C7E71;
+    --ftdl-editor-border-color: #4A3F36;
+    --ftdl-suggestion-bg: #2E2620;
+    --ftdl-suggestion-text-color: #EFE6DA;
+    --ftdl-suggestion-border-color: #4A3F36;
+    --ftdl-suggestion-hover-bg: #574232;
+
+    /* 樹系選擇器與 metadata（metadata.css 在深色模式讀 --dark-*） */
+    --dark-primary: var(--rs-amber);
+    --dark-primary-hover: #E3A562;
+    --dark-primary-active: #C98540;
+    --dark-primary-light: #3A2F27;
+    --dark-primary-dark: #F3E6D2;
+    --dark-background: #26201B;
+    --dark-background-secondary: #2E2620;
+    --dark-background-tertiary: #3A3029;
+    --dark-text-primary: #EFE6DA;
+    --dark-text-secondary: #C2B4A5;
+    --dark-text-tertiary: #8C7E71;
+    --dark-border: #4A3F36;
+    --dark-border-light: #3A3029;
+    --dark-selected-bg: #3A2F27;
+    --dark-selected-text: #F3E6D2;
+    --dark-hover-bg: #332A23;
+
+    color: #EFE6DA;
+}
+body.dark-mode #app-header { background-color: #120E0B; }
+body.dark-mode .tab-btn.active { color: #F3E6D2; background-color: #3A2F27; }
+body.dark-mode #ai-status.ai-status-success { background: #3A2F27; color: #F3E6D2; }
+body.dark-mode #ai-status.ai-status-error { background: #4A2A20; color: #F6CDBE; }
+body.dark-mode .ai-dialog input,
+body.dark-mode .ai-dialog select { background: #1E1915; color: #EFE6DA; }
+body.dark-mode .person-figure:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }

@@ -40,6 +40,10 @@
             </div>
 
             <div class="header-right">
+                <button id="theme-toggle-btn" class="theme-toggle-btn" type="button" title="切換淺色／深色模式" aria-label="切換淺色／深色模式">
+                    <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/></svg>
+                    <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+                </button>
                 <button id="ai-settings-btn" class="ai-settings-btn" title="Google AI Studio API 設定">API 設定</button>
             </div>
         </header>
@@ -67,7 +71,7 @@
         </main>
 
         <div id="dialogue-container">
-            <textarea id="user-text-input" placeholder="用一般文字描述家庭或研究情境，例如：父親 1968 年生、與母親婚姻品質良好……（Enter 送出，Shift+Enter 換行）" rows="1"></textarea>
+            <textarea id="user-text-input" placeholder="用一般文字描述家庭或研究情境，例如：父親 1968 年生、與母親婚姻品質良好……（Enter 換行，Shift+Enter 送出）" rows="1"></textarea>
             <button id="run-dialogue-btn">執行</button>
         </div>
         
@@ -84,6 +88,7 @@
     <script src="treeSelector.js"></script>
     <script src="metadata.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="ai.js"></script>
 
 </body>

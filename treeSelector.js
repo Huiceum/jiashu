@@ -325,13 +325,15 @@ const globalClearFunction = window.clearFamilyTree || function() {
 
     // --- Identify and Filter Trees ---
     // 規則：
-    // 1. 能一次畫完全部代數、沒有維度衝突時，提供「完整家系」視圖（預設顯示）。
+    // 1. 能一次畫完全部代數、沒有維度衝突時，只提供「完整家系」視圖。
     //    維度衝突：同一段伴侶關係的兩個人都有父母在圖中（兩邊的原生家庭搶同一個位置），
     //    或同一個人被寫成兩對父母的孩子。
-    // 2. 每一對「有孫輩」的伴侶都是一個樹核，各自形成三代分支：
-    //    樹核本人 → 子女 → 孫輩，加上子女與孫輩的伴侶（不往上畫伴侶的父母，他們通常是別的樹核）。
-    // 3. 只有兩代、且沒有被任何三代分支涵蓋的家庭，自成一個分支；剩下的人歸入獨立群組。
-    // 4. 同一個人可以同時出現在多個分支裡，不會因為已經出現過就被隱藏。
+    // 2. 有衝突時，每一個「有孫輩的人」都是樹核，從他往下畫直系視圖：
+    //    樹核本人、他的所有婚姻、所有世代的後代，以及後代的婚姻對象；
+    //    不畫婚姻對象的父母、手足等其他親屬，也不裁切代數。
+    // 3. 某個樹核的視圖如果已經完整包含在另一個視圖裡，就不另外列出。
+    // 4. 不在任何視圖裡的人，依關係連通成獨立群組。
+    // 5. 同一個人可以同時出現在多個視圖裡，不會因為已經出現過就被隱藏。
     function buildRelationshipSnippet(rel, memberIds) {
         const keptPartners = (rel.data.partners || []).filter(pId => memberIds.has(pId));
         const keptChildren = (rel.data.children || []).filter(cId => memberIds.has(cId));
@@ -397,8 +399,10 @@ const globalClearFunction = window.clearFamilyTree || function() {
                 rel.partners.forEach(id => {
                     if (personMap[id].generation < gen) { personMap[id].generation = gen; changed = true; }
                 });
+                // 同一對父母的子女在同一代（例如只有一個手足嫁進較晚的世代時，其他手足也跟著往下）
+                const siblingGen = Math.max(gen + 1, ...rel.children.map(id => personMap[id].generation));
                 rel.children.forEach(id => {
-                    if (personMap[id].generation < gen + 1) { personMap[id].generation = gen + 1; changed = true; }
+                    if (personMap[id].generation < siblingGen) { personMap[id].generation = siblingGen; changed = true; }
                 });
                 // 沒有父母的人（例如姻親的父母）往下對齊：至少是子女的上一代
                 if (rel.children.length > 0) {
@@ -410,60 +414,83 @@ const globalClearFunction = window.clearFamilyTree || function() {
             });
         }
 
-        const childrenOf = rel => rel.children;
         const relsOf = id => personMap[id].rels;
         const names = ids => ids.map(getPersonNameOrId).join(' & ');
         const trees = [];
 
-        // --- 1. 完整家系 ---
-        const conflicts = [];
-        rels.forEach(rel => {
-            const withParents = rel.partners.filter(id => personMap[id].parentRels.length > 0);
-            if (withParents.length > 1) conflicts.push(`${names(withParents)} 兩邊都有父母`);
-        });
-        Object.values(personMap).forEach(p => {
-            if (p.parentRels.length > 1) conflicts.push(`${getPersonNameOrId(p.id)} 有兩對父母`);
-        });
-        const allIds = new Set(Object.keys(personMap));
-        const gens = new Set(Object.values(personMap).map(p => p.generation));
-        if (conflicts.length === 0) {
-            trees.push({ kind: 'full', members: allIds, name: `完整家系（${gens.size} 代）`, sortGen: -1 });
-        } else {
-            console.log('完整家系有維度衝突，改用分支樹：', conflicts);
+        // 維度衝突：範圍內同一段伴侶關係的兩個人都有父母在範圍內，或同一個人有兩對父母在範圍內
+        // 血親婚姻（雙方有共同祖先，例如表兄妹結婚）由排版程式用例外畫法處理，不算維度衝突
+        function ancestorsOf(id, seen = new Set()) {
+            personMap[id].parentRels.forEach(r => r.partners.forEach(pid => { if (!seen.has(pid)) { seen.add(pid); ancestorsOf(pid, seen); } }));
+            return seen;
         }
+        function isBloodMarriage(rel) {
+            if (rel.partners.length !== 2) return false;
+            const ancestorsA = ancestorsOf(rel.partners[0]);
+            return [...ancestorsOf(rel.partners[1])].some(id => ancestorsA.has(id));
+        }
+        function findConflicts(members) {
+            const conflicts = [];
+            const parentRelsIn = id => personMap[id].parentRels.filter(r => r.partners.some(pid => members.has(pid)));
+            rels.forEach(rel => {
+                if (isBloodMarriage(rel)) return;
+                const inside = rel.partners.filter(id => members.has(id));
+                const withParents = inside.filter(id => parentRelsIn(id).length > 0);
+                if (withParents.length > 1) conflicts.push(`${names(withParents)} 兩邊都有父母`);
+            });
+            members.forEach(id => {
+                if (parentRelsIn(id).length > 1) conflicts.push(`${getPersonNameOrId(id)} 有兩對父母`);
+            });
+            return conflicts;
+        }
+        const countGenerations = members => new Set(Array.from(members).map(id => personMap[id].generation)).size;
+        const probandIds = Object.keys(personMap).filter(id => parsedPersons[id].data.proband === true);
 
-        // --- 2. 三代分支：有孫輩的伴侶是樹核 ---
-        const coveredFamilyRels = new Set(); // 已經以「完整的一家人」出現在某個三代分支的伴侶關係
-        rels.forEach(coreRel => {
-            const grandchildRels = childrenOf(coreRel).flatMap(id => relsOf(id)).filter(r => r.children.length > 0);
-            if (grandchildRels.length === 0) return;
-            const members = new Set(coreRel.partners);
-            coveredFamilyRels.add(coreRel.index);
-            childrenOf(coreRel).forEach(childId => {
-                members.add(childId);
-                relsOf(childId).forEach(childRel => {
-                    coveredFamilyRels.add(childRel.index);
-                    childRel.partners.forEach(id => members.add(id));
-                    childRel.children.forEach(grandId => {
-                        members.add(grandId);
-                        relsOf(grandId).forEach(r => r.partners.forEach(id => members.add(id)));
-                    });
+        // 直系視圖：本人、他的所有婚姻對象，以及往下所有世代的後代與後代的婚姻對象
+        function lineageOf(personId) {
+            const members = new Set([personId]);
+            const queue = [personId];
+            while (queue.length) {
+                const id = queue.shift();
+                relsOf(id).forEach(r => {
+                    r.partners.forEach(pid => members.add(pid)); // 婚姻對象本人，不往上畫他的父母
+                    r.children.forEach(cid => { if (!members.has(cid)) { members.add(cid); queue.push(cid); } });
+                });
+            }
+            return members;
+        }
+        const hasGrandchildren = id => relsOf(id).some(r => r.children.some(cid => relsOf(cid).some(cr => cr.children.length > 0)));
+
+        // --- 1. 完整家系 ---
+        const allIds = new Set(Object.keys(personMap));
+        const conflicts = findConflicts(allIds);
+        if (conflicts.length === 0) {
+            trees.push({ kind: 'full', members: allIds, name: `完整家系（${countGenerations(allIds)} 代）`, sortGen: -1 });
+        } else {
+            console.log('完整家系有維度衝突，改用樹核的直系視圖：', conflicts);
+            // --- 2. 每個有孫輩的人都是樹核 ---
+            Object.keys(personMap).filter(hasGrandchildren).forEach(coreId => {
+                const members = lineageOf(coreId);
+                const genCount = countGenerations(members);
+                const coreNames = [coreId, ...relsOf(coreId).flatMap(r => r.partners).filter(id => id !== coreId)];
+                trees.push({
+                    kind: 'lineage', members,
+                    name: `${names([...new Set(coreNames)])} 直系（${genCount} 代）`,
+                    sortGen: (probandIds.some(id => members.has(id)) ? -1000 : 0) - genCount * 10 + personMap[coreId].generation
                 });
             });
-            const coreGen = Math.min(...coreRel.partners.map(id => personMap[id].generation));
-            trees.push({ kind: 'branch', members, name: `${names(coreRel.partners)}（三代分支）`, sortGen: coreGen });
-        });
+        }
 
-        // --- 3. 沒被三代分支涵蓋的兩代家庭 ---
-        rels.forEach(rel => {
-            if (rel.children.length === 0 || coveredFamilyRels.has(rel.index)) return;
-            const members = new Set([...rel.partners, ...rel.children]);
-            rel.children.forEach(id => relsOf(id).forEach(r => r.partners.forEach(pid => members.add(pid))));
-            const gen = Math.min(...rel.partners.map(id => personMap[id].generation));
-            trees.push({ kind: 'branch', members, name: `${names(rel.partners)}（兩代）`, sortGen: gen });
+        // --- 3. 已經完整包含在另一個視圖裡的樹核視圖不另外列出 ---
+        const isSubset = (a, b) => a.size <= b.size && Array.from(a).every(id => b.has(id));
+        const kept = [];
+        trees.slice().sort((a, b) => b.members.size - a.members.size).forEach(tree => {
+            if (!kept.some(other => isSubset(tree.members, other.members))) kept.push(tree);
         });
+        trees.length = 0;
+        trees.push(...kept);
 
-        // --- 4. 不在任何分支裡的人：依關係連通成獨立群組 ---
+        // --- 4. 不在任何視圖裡的人：依關係連通成獨立群組 ---
         const inSomeTree = new Set();
         trees.forEach(t => { if (t.kind !== 'full') t.members.forEach(id => inSomeTree.add(id)); });
         Object.keys(personMap).forEach(startId => {
@@ -486,9 +513,9 @@ const globalClearFunction = window.clearFamilyTree || function() {
             });
         });
 
-        // 內容完全相同的視圖只留一個（例如只有三代時，完整家系就等於唯一的分支）
+        // 內容完全相同的視圖只留一個
         const seen = new Set();
-        const order = { full: 0, branch: 1, group: 2 };
+        const order = { full: 0, lineage: 1, group: 2 };
         trees.sort((a, b) => order[a.kind] - order[b.kind] || a.sortGen - b.sortGen || a.name.localeCompare(b.name));
         trees.forEach(tree => {
             const key = Array.from(tree.members).sort().join('|');
@@ -543,7 +570,20 @@ var handleOptionSelection = function(optionIndex, selectedListItem) { // var for
         if (wrapper) wrapper.innerHTML = `<p style="color: red; text-align: center; padding: 20px;">渲染 ${selectedOption.name} 時發生錯誤: ${error.message}</p>`;
     }
     if (selectorList) selectorList.querySelectorAll('li.selected').forEach(li => li.classList.remove('selected'));
-    if (selectedListItem) { selectedListItem.classList.add('selected'); selectedListItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    if (selectedListItem) {
+        selectedListItem.classList.add('selected');
+        // 只捲動清單本身；用 scrollIntoView 會在面板收起時把整個畫布容器往右捲，
+        // 造成右上角按鈕和家系圖整個往左偏
+        const listContainer = selectedListItem.closest('#tree-selector-list-container');
+        if (listContainer) {
+            const itemTop = selectedListItem.offsetTop - listContainer.offsetTop;
+            if (itemTop < listContainer.scrollTop) listContainer.scrollTop = itemTop;
+            else if (itemTop + selectedListItem.offsetHeight > listContainer.scrollTop + listContainer.clientHeight) {
+                listContainer.scrollTop = itemTop + selectedListItem.offsetHeight - listContainer.clientHeight;
+            }
+        }
+    }
+    if (familyTreeContainer) { familyTreeContainer.scrollLeft = 0; familyTreeContainer.scrollTop = 0; }
     switchToCanvasView();
     // ... 函數的其餘部分保持不變 ...
 };
@@ -591,7 +631,7 @@ function executeAndSelectTree() {
     populateSelectorList();
     switchToCanvasView();
         if (currentOptions.length > 0) {
-            // 預設畫第一個視圖：能一次畫完時是「完整家系」，否則是最上層的分支
+            // 預設畫第一個視圖：能一次畫完時是「完整家系」，否則是含案主、代數最多的直系視圖
             if (currentOptions.length > 1) showSelectorPanel(); else hideSelectorPanel();
             setTimeout(() => {
                 const firstItem = selectorList ? selectorList.querySelector('li[data-option-index="0"]') : null;
