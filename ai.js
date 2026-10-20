@@ -34,7 +34,8 @@ person {
   name: 顯示名稱; gender: male|female|other;
   birth: YYYY[-MM[-DD]]; death: YYYY[-MM[-DD]]|true;
   proband: true;                  // 先證者（圖的主角，通常只有一位）
-  chronic: true; Disability: true; // 慢性病、身心障礙（D 大寫）
+  chronic: true;                  // 慢性病：只用於身體疾病
+  Disability: true;               // 身心障礙（D 大寫）：精神障礙、智能障礙、自閉症、肢體／感官障礙
   wellbeing: 0–1;                 // 身心狀態分數，0 = 很差、1 = 很好，決定節點顏色
   fill: sand|mist|apricot|amber|clay|stone|#RRGGBB;  // 直接指定節點顏色（少用）
   note: 備註;
@@ -75,9 +76,30 @@ tie {                             // 關係強弱標記：單向弧線箭頭，�
 ## 結構
 - 親子關係只能寫在父母那段 relationship 的 children 裡。
 - 單親或另一位家長不明時，partners 只寫一個人。
+- 描述明確說某人性別不明、未知或不記得時，寫 gender: other。
 - 用拼音或英文當 id，例如 wang_daming、father、child1。
 - 描述沒有寫明是誰的故事時，把敘事的主角（標題或故事圍繞的那個人）設為 proband。
 - 描述只說「年紀很輕就當媽媽」「六十多歲」這類模糊年齡時，取合理的整數年齡換算，例如六十多歲取 65。
+
+## 推理親屬關係
+描述常常不會把每段關係都明講，你要從整段文字推理出所有隱含的親屬關係，畫出完整、相連的家系圖，而不是只畫字面上直接寫出的關係。
+- 「娶」「嫁」「結婚」「太太」「先生」「老公」「老婆」「媳婦」「女婿」「夫妻倆」「兩人的孩子」都代表一對伴侶，一定要寫成 relationship。即使婚姻和孩子分在不同段落，或孩子在很後面才提到，也要寫進同一段 relationship 的 children。
+- 從稱謂推回關係：「叔叔」「姑姑」是父親的手足，「舅舅」「阿姨」是母親的手足；「外公、外婆」是母親的父母，「爺爺、奶奶」是父親的父母；「孫子」「姪子」「外甥」「曾孫」同理。必要時補出中間那一代的人。
+- 從「長子」「次子」「哥哥」「妹妹」「兩個孩子」「兄弟姊妹」推出同一對父母的所有子女，全部寫進同一段 relationship 的 children。
+- 描述說某人是「某某的兒子／女兒」，但沒提另一位家長時：若同一段描述有提到某某的配偶，就是這對夫妻的孩子；真的沒有配偶，才寫單親 relationship。
+- 描述提到的人只有名字、沒說明和別人的關係時，可以依姓氏、敘事脈絡判斷，並把他接到最合理的位置。
+- 輸出前逐一檢查：
+  1. 每一對伴侶都有 relationship。
+  2. 每個孩子都出現在父母那段的 children 裡。
+  3. 除了嫁娶進來的配偶，每個人都和其他人相連，沒有孤立的人。
+  4. 每一代都接得上下一代。
+
+## 健康狀況
+- 精神疾病與精神障礙一律寫 Disability: true，不可以寫成 chronic，即使描述說「長期」「慢性」或「定期回診」也一樣。例如思覺失調症、雙相情緒障礙症（躁鬱症）、憂鬱症、焦慮症、強迫症、創傷後壓力症候群、失智症、自閉症、注意力不足過動症、智能障礙。
+- chronic: true 只用於長期的身體疾病，例如糖尿病、高血壓、心臟病、慢性腎病、氣喘、癌症治療中。
+- 肢體、視覺、聽覺等障礙寫 Disability: true。
+- 同一個人同時有身體慢性病和身心障礙時，兩個都寫。
+- 有具體診斷名稱時，把它簡短寫進 note，例如「思覺失調症」「雙相情緒障礙症，設計師」。
 
 ## 程度與關係
 - 文字描述的程度要換成 0–1：很差 0.1、差 0.3、普通 0.5、好 0.7、很好 0.9。
@@ -118,10 +140,27 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         return stored || CONFIG.geminiApiKey || '';
     }
 
+    const DEFAULT_MODEL = CONFIG.geminiModel || 'gemini-3.5-flash-lite';
+    const MODEL_OPTIONS = [
+        { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite（推薦，最快）' },
+        { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash（較準，稍慢）' },
+        { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash（最新，思考較久）' },
+        { value: 'gemini-flash-lite-latest', label: 'gemini-flash-lite-latest（自動跟最新 Flash-Lite）' },
+        { value: 'gemini-flash-latest', label: 'gemini-flash-latest（自動跟最新 Flash）' }
+    ];
+
+    // 舊版把預設的 gemini-flash-latest 也存進 localStorage，清掉它，讓這些使用者改用新的預設模型
+    try {
+        if (!localStorage.getItem('ftdlGeminiModelMigrated')) {
+            if (localStorage.getItem(MODEL_STORAGE) === 'gemini-flash-latest') localStorage.removeItem(MODEL_STORAGE);
+            localStorage.setItem('ftdlGeminiModelMigrated', '1');
+        }
+    } catch (e) { /* 無法使用 localStorage */ }
+
     function getModel() {
         let stored = '';
         try { stored = localStorage.getItem(MODEL_STORAGE) || ''; } catch (e) { /* 無法使用 localStorage */ }
-        return stored || CONFIG.geminiModel || 'gemini-flash-latest';
+        return stored || DEFAULT_MODEL;
     }
 
     function openSettings(message) {
@@ -136,8 +175,12 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                     <label for="ai-key-input">API 金鑰</label>
                     <input id="ai-key-input" type="password" autocomplete="off" placeholder="AIza...">
                     <p class="ai-dialog-hint">到 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> 免費建立。金鑰只存在這個瀏覽器，不會上傳到其他地方。</p>
-                    <label for="ai-model-input">模型</label>
-                    <input id="ai-model-input" type="text" autocomplete="off">
+                    <label for="ai-model-select">模型</label>
+                    <select id="ai-model-select">
+                        ${MODEL_OPTIONS.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}
+                        <option value="__custom">其他（自行輸入）</option>
+                    </select>
+                    <input id="ai-model-input" type="text" autocomplete="off" spellcheck="false" placeholder="輸入模型名稱，例如 gemini-3.6-flash">
                     <div class="ai-dialog-actions">
                         <button id="ai-key-clear" class="ai-btn-secondary" type="button">清除金鑰</button>
                         <button id="ai-key-cancel" class="ai-btn-secondary" type="button">取消</button>
@@ -147,16 +190,24 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             document.body.appendChild(overlay);
             overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('visible'); });
             overlay.querySelector('#ai-key-cancel').addEventListener('click', () => overlay.classList.remove('visible'));
+            overlay.querySelector('#ai-model-select').addEventListener('change', e => {
+                const custom = e.target.value === '__custom';
+                overlay.querySelector('#ai-model-input').style.display = custom ? 'block' : 'none';
+                if (custom) overlay.querySelector('#ai-model-input').focus();
+            });
             overlay.querySelector('#ai-key-clear').addEventListener('click', () => {
                 try { localStorage.removeItem(KEY_STORAGE); } catch (e) { /* 忽略 */ }
                 overlay.querySelector('#ai-key-input').value = '';
             });
             overlay.querySelector('#ai-key-save').addEventListener('click', () => {
                 const key = overlay.querySelector('#ai-key-input').value.trim();
-                const model = overlay.querySelector('#ai-model-input').value.trim();
+                const selected = overlay.querySelector('#ai-model-select').value;
+                const model = selected === '__custom' ? overlay.querySelector('#ai-model-input').value.trim() : selected;
                 try {
                     if (key) localStorage.setItem(KEY_STORAGE, key);
-                    if (model) localStorage.setItem(MODEL_STORAGE, model);
+                    // 選預設模型時不存，之後預設模型更新就會自動跟上
+                    if (model && model !== DEFAULT_MODEL) localStorage.setItem(MODEL_STORAGE, model);
+                    else if (model === DEFAULT_MODEL) localStorage.removeItem(MODEL_STORAGE);
                 } catch (e) { /* 忽略 */ }
                 overlay.classList.remove('visible');
                 if (overlay.dataset.resume === 'true' && getKey()) {
@@ -168,7 +219,11 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         overlay.querySelector('.ai-dialog-message').textContent = message || '';
         overlay.querySelector('.ai-dialog-message').style.display = message ? 'block' : 'none';
         overlay.querySelector('#ai-key-input').value = (() => { try { return localStorage.getItem(KEY_STORAGE) || ''; } catch (e) { return ''; } })();
-        overlay.querySelector('#ai-model-input').value = getModel();
+        const currentModel = getModel();
+        const isPreset = MODEL_OPTIONS.some(o => o.value === currentModel);
+        overlay.querySelector('#ai-model-select').value = isPreset ? currentModel : '__custom';
+        overlay.querySelector('#ai-model-input').value = isPreset ? '' : currentModel;
+        overlay.querySelector('#ai-model-input').style.display = isPreset ? 'none' : 'block';
         overlay.classList.add('visible');
         setTimeout(() => overlay.querySelector('#ai-key-input').focus(), 50);
         return overlay;
@@ -199,18 +254,78 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
     }
 
     // --- Gemini API ---
-    const TIMEOUT_MS = CONFIG.requestTimeoutMs ?? 90000;
+    const TIMEOUT_MS = CONFIG.requestTimeoutMs ?? 180000;
     const NETWORK_RETRIES = CONFIG.networkRetries ?? 2;
 
+    // 用串流（SSE）接收回應：模型邊產生邊傳回，連線不會因為長時間沒有資料而被瀏覽器（尤其 Safari）切斷。
     // 連線中斷（Safari 顯示為 "Load failed"）或逾時時自動重試；HTTP 錯誤不重試
-    async function fetchWithRetry(url, options) {
+    async function streamOnce(url, options) {
+        const controller = new AbortController();
+        let timer;
+        // 逾時以「多久沒收到新資料」計算，長回應只要持續有資料就不會被中斷
+        const resetTimer = () => { clearTimeout(timer); timer = setTimeout(() => controller.abort(), TIMEOUT_MS); };
+        resetTimer();
+        try {
+            const res = await fetch(url, { ...options, signal: controller.signal });
+            if (!res.ok) {
+                let data = null;
+                try { data = await res.json(); } catch (e) { /* 非 JSON 回應 */ }
+                const msg = data && data.error && data.error.message ? data.error.message : `HTTP ${res.status}`;
+                const err = new Error(msg);
+                err.status = res.status;
+                throw err;
+            }
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let text = '';
+            let finishReason = '';
+            let blockReason = '';
+            const handleEvent = (line) => {
+                if (!line.startsWith('data:')) return;
+                const payload = line.slice(5).trim();
+                if (!payload) return;
+                let data;
+                try { data = JSON.parse(payload); } catch (e) { return; }
+                if (data.error) {
+                    const err = new Error(data.error.message || '串流回應錯誤');
+                    err.status = data.error.code;
+                    throw err;
+                }
+                const candidate = data.candidates && data.candidates[0];
+                if (candidate && candidate.content && candidate.content.parts) {
+                    const parts = candidate.content.parts;
+                    if (parts.some(p => p.thought)) setStatus(`${getModel()} 正在思考…`);
+                    text += parts.filter(p => !p.thought).map(p => p.text || '').join('');
+                }
+                if (candidate && candidate.finishReason) finishReason = candidate.finishReason;
+                if (data.promptFeedback && data.promptFeedback.blockReason) blockReason = data.promptFeedback.blockReason;
+            };
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                resetTimer();
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split(/\r?\n/);
+                buffer = lines.pop();
+                lines.forEach(handleEvent);
+            }
+            buffer += decoder.decode();
+            if (buffer) handleEvent(buffer);
+            if (!text.trim()) throw new Error(`模型沒有回傳內容（${finishReason || blockReason || '未知原因'}）`);
+            return text;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    async function streamWithRetry(url, options) {
         let lastError;
         for (let attempt = 0; attempt <= NETWORK_RETRIES; attempt++) {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
             try {
-                return await fetch(url, { ...options, signal: controller.signal });
+                return await streamOnce(url, options);
             } catch (err) {
+                if (err.status || err.message.startsWith('模型沒有回傳內容')) throw err;
                 lastError = err;
                 lastError.isNetwork = true;
                 lastError.isTimeout = err.name === 'AbortError';
@@ -218,8 +333,6 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                     setStatus(`連線中斷，正在重試（第 ${attempt + 1} 次）…`);
                     await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
                 }
-            } finally {
-                clearTimeout(timer);
             }
         }
         throw lastError;
@@ -227,32 +340,19 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
 
     async function callGemini(contents) {
         const model = getModel();
-        const res = await fetchWithRetry(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
+        return streamWithRetry(`${API_BASE}/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() },
             body: JSON.stringify({
                 systemInstruction: { parts: [{ text: SYSTEM_PROMPT.replace('{{TODAY_YEAR}}', String(new Date().getFullYear())) }] },
                 contents,
-                generationConfig: { temperature: CONFIG.temperature ?? 0.2 }
+                generationConfig: {
+                    temperature: CONFIG.temperature ?? 0.2,
+                    // 讓思考摘要也串流回來，模型思考期間連線持續有資料，不會被當成閒置或逾時
+                    thinkingConfig: { includeThoughts: true }
+                }
             })
         });
-        let data = null;
-        try { data = await res.json(); } catch (e) { /* 非 JSON 回應 */ }
-        if (!res.ok) {
-            const msg = data && data.error && data.error.message ? data.error.message : `HTTP ${res.status}`;
-            const err = new Error(msg);
-            err.status = res.status;
-            throw err;
-        }
-        const candidate = data && data.candidates && data.candidates[0];
-        const text = candidate && candidate.content && candidate.content.parts
-            ? candidate.content.parts.map(p => p.text || '').join('')
-            : '';
-        if (!text.trim()) {
-            const reason = (candidate && candidate.finishReason) || (data && data.promptFeedback && data.promptFeedback.blockReason) || '未知原因';
-            throw new Error(`模型沒有回傳內容（${reason}）`);
-        }
-        return text;
     }
 
     function extractFtdl(text) {
@@ -262,10 +362,37 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         return t;
     }
 
+    // 找出沒有接上任何 relationship 的人（模型漏掉隱含的婚姻或親子關係時常見）
+    function findIsolatedPeople(ftdl) {
+        const blocks = [];
+        const re = /(person|relationship)\s*\{([^}]*)\}/g;
+        let m;
+        while ((m = re.exec(ftdl))) {
+            blocks.push({ type: m[1], body: m[2], lineNumber: ftdl.slice(0, m.index).split('\n').length });
+        }
+        const people = blocks.filter(b => b.type === 'person')
+            .map(b => ({ id: (b.body.match(/\bid\s*:\s*([^;\s]+)/) || [])[1], lineNumber: b.lineNumber }))
+            .filter(p => p.id);
+        if (people.length < 2) return [];
+        const linked = new Set();
+        blocks.filter(b => b.type === 'relationship').forEach(b => {
+            ['partners', 'children'].forEach(key => {
+                const list = b.body.match(new RegExp(`\\b${key}\\s*:\\s*\\[([^\\]]*)\\]`));
+                if (list) list[1].split(',').map(x => x.trim()).filter(Boolean).forEach(id => linked.add(id));
+            });
+        });
+        return people.filter(p => !linked.has(p.id)).map(p => ({
+            isolated: true,
+            lineNumber: p.lineNumber,
+            message: `${p.id} 沒有出現在任何 relationship 的 partners 或 children 裡，是孤立的人。請從描述推理他的配偶、父母或子女，補上對應的 relationship。`
+        }));
+    }
+
     function loadIntoEditor(ftdl) {
         editor.value = ftdl;
         editor.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-        return typeof window.ftdlValidate === 'function' ? window.ftdlValidate() : [];
+        const errors = typeof window.ftdlValidate === 'function' ? window.ftdlValidate() : [];
+        return errors.length > 0 ? errors : findIsolatedPeople(ftdl);
     }
 
     // --- 主流程 ---
@@ -288,16 +415,21 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
 
             const maxRepair = CONFIG.maxRepairAttempts ?? 1;
             for (let i = 0; i < maxRepair && errors.length > 0; i++) {
-                setStatus(`語法有 ${errors.length} 個問題，正在請模型修正…`);
+                setStatus(`有 ${errors.length} 個語法或關係問題，正在請模型修正…`);
                 contents.push({ role: 'model', parts: [{ text: reply }] });
-                contents.push({ role: 'user', parts: [{ text: `上面的 FTDL 驗證失敗，請修正後只輸出完整的 FTDL：\n${errors.map(e => `第 ${e.lineNumber} 行：${e.message}`).join('\n')}` }] });
+                contents.push({ role: 'user', parts: [{ text: `上面的 FTDL 有以下問題，請修正後只輸出完整的 FTDL：\n${errors.map(e => `第 ${e.lineNumber} 行：${e.message}`).join('\n')}` }] });
                 reply = await callGemini(contents);
                 ftdl = extractFtdl(reply);
                 errors = loadIntoEditor(ftdl);
             }
 
-            if (errors.length > 0) {
-                setStatus(`已載入編輯器，但還有 ${errors.length} 個語法問題，請到「編輯」頁修正。`, 'error');
+            if (errors.length > 0 && errors.every(e => e.isolated)) {
+                // 語法正確、只是有人沒接上關係：照樣畫圖，提醒使用者補上
+                executeBtn.disabled = false;
+                executeBtn.click();
+                setStatus(`家系圖已畫好，但有 ${errors.length} 個人沒有接上任何關係（${errors.map(e => e.message.split(' ')[0]).join('、')}），可到「編輯」頁補上。`, 'error');
+            } else if (errors.length > 0) {
+                setStatus(`已載入編輯器，但還有 ${errors.length} 個語法或關係問題，請到「編輯」頁修正。`, 'error');
                 document.querySelector('.tab-btn[data-view="editor"]')?.click();
             } else {
                 executeBtn.disabled = false;

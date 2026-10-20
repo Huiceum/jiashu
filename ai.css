@@ -51,7 +51,8 @@
 }
 .ai-dialog h3 { margin: 0 0 10px; font-size: 1.15em; }
 .ai-dialog label { display: block; font-size: 0.9em; margin: 14px 0 6px; color: var(--text-color-secondary); }
-.ai-dialog input {
+.ai-dialog input,
+.ai-dialog select {
     width: 100%;
     box-sizing: border-box;
     padding: 9px 11px;
@@ -61,7 +62,10 @@
     background: var(--background-color);
     color: var(--text-color-primary);
 }
-.ai-dialog input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2); }
+.ai-dialog select { cursor: pointer; }
+#ai-model-input { margin-top: 8px; }
+.ai-dialog input:focus,
+.ai-dialog select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2); }
 .ai-dialog-message { background: var(--primary-color-pale); padding: 8px 10px; border-radius: 6px; font-size: 0.9em; margin: 0 0 4px; }
 .ai-dialog-hint { font-size: 0.82em; color: var(--text-color-secondary); margin: 6px 0 0; line-height: 1.5; }
 .ai-dialog-hint a { color: var(--primary-color-darker); }

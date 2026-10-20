@@ -324,226 +324,183 @@ const globalClearFunction = window.clearFamilyTree || function() {
 
 
     // --- Identify and Filter Trees ---
+    // 規則：
+    // 1. 能一次畫完全部代數、沒有維度衝突時，提供「完整家系」視圖（預設顯示）。
+    //    維度衝突：同一段伴侶關係的兩個人都有父母在圖中（兩邊的原生家庭搶同一個位置），
+    //    或同一個人被寫成兩對父母的孩子。
+    // 2. 每一對「有孫輩」的伴侶都是一個樹核，各自形成三代分支：
+    //    樹核本人 → 子女 → 孫輩，加上子女與孫輩的伴侶（不往上畫伴侶的父母，他們通常是別的樹核）。
+    // 3. 只有兩代、且沒有被任何三代分支涵蓋的家庭，自成一個分支；剩下的人歸入獨立群組。
+    // 4. 同一個人可以同時出現在多個分支裡，不會因為已經出現過就被隱藏。
+    function buildRelationshipSnippet(rel, memberIds) {
+        const keptPartners = (rel.data.partners || []).filter(pId => memberIds.has(pId));
+        const keptChildren = (rel.data.children || []).filter(cId => memberIds.has(cId));
+        if (keptPartners.length === 0 && keptChildren.length === 0) return '';
+        const originalLines = rel.rawFtdl.split('\n'); const modifiedLines = [];
+        let partnersLineFound = false; let childrenLineFound = false;
+        const newPartnersContent = keptPartners.length > 0 ? `    partners: [${keptPartners.join(', ')}];` : null;
+        const newChildrenContent = keptChildren.length > 0 ? `    children: [${keptChildren.join(', ')}];` : null;
+        for (let i = 0; i < originalLines.length; i++) {
+            const line = originalLines[i]; const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('relationship {')) { modifiedLines.push(line); continue; }
+            if (trimmedLine === '}') {
+                if (!partnersLineFound && newPartnersContent !== null) modifiedLines.push(newPartnersContent);
+                if (!childrenLineFound && newChildrenContent !== null) modifiedLines.push(newChildrenContent);
+                modifiedLines.push(line); continue;
+            }
+            if (trimmedLine.startsWith('partners:')) {
+                partnersLineFound = true;
+                if (newPartnersContent !== null) { const indentation = line.match(/^\s*/)?.[0] || '    '; modifiedLines.push(indentation + newPartnersContent.trimStart()); }
+                continue;
+            } else if (trimmedLine.startsWith('children:')) {
+                childrenLineFound = true;
+                if (newChildrenContent !== null) { const indentation = line.match(/^\s*/)?.[0] || '    '; modifiedLines.push(indentation + newChildrenContent.trimStart()); }
+                continue;
+            } modifiedLines.push(line);
+        }
+        return modifiedLines.join('\n').trim() + "\n\n";
+    }
+
+    function buildTreeFtdl(memberIds, subtitle) {
+        let snippet = '';
+        Object.keys(parsedPersons).forEach(id => {
+            if (memberIds.has(id)) snippet += parsedPersons[id].rawFtdl + "\n\n";
+        });
+        parsedRelationships.forEach(rel => { snippet += buildRelationshipSnippet(rel, memberIds); });
+        const finalMetadataBlock = getMetadataWithDynamicSubtitle(globalParsedMetadata, subtitle);
+        return ((finalMetadataBlock ? finalMetadataBlock + "\n\n" : "") + snippet.trim()).trim();
+    }
+
     function identifyAndFilterTrees() {
         identifiedTrees = [];
         if (Object.keys(parsedPersons).length === 0) return;
 
         const personMap = {};
         Object.keys(parsedPersons).forEach(id => {
-            personMap[id] = {
-                id: id, data: parsedPersons[id].data, rawFtdl: parsedPersons[id].rawFtdl,
-                children: new Set(), parents: new Set(), partners: new Set(),
-                relationships: [], generation: null, treeId: null, visited: false
-            };
+            personMap[id] = { id, parentRels: [], rels: [], generation: 0 };
         });
-        parsedRelationships.forEach((rel, relIndex) => {
-            const partners = rel.data.partners || []; const children = rel.data.children || [];
-            partners.forEach(p1Id => {
-                if (!personMap[p1Id]) return; personMap[p1Id].relationships.push(relIndex);
-                partners.forEach(p2Id => { if (p1Id !== p2Id && personMap[p2Id]) personMap[p1Id].partners.add(p2Id); });
-                children.forEach(childId => {
-                    if (!personMap[childId]) return;
-                    personMap[p1Id].children.add(childId); personMap[childId].parents.add(p1Id);
+        const rels = parsedRelationships.map((rel, index) => ({
+            index,
+            partners: (rel.data.partners || []).filter(id => personMap[id]),
+            children: (rel.data.children || []).filter(id => personMap[id])
+        })).filter(rel => rel.partners.length > 0);
+        rels.forEach(rel => {
+            rel.partners.forEach(id => personMap[id].rels.push(rel));
+            rel.children.forEach(id => personMap[id].parentRels.push(rel));
+        });
+
+        // 世代：沒有父母的人從 0 開始；子女 = 父母最大世代 + 1；伴侶對齊到同一代
+        for (let iter = 0, changed = true; changed && iter < 100; iter++) {
+            changed = false;
+            rels.forEach(rel => {
+                const gen = Math.max(...rel.partners.map(id => personMap[id].generation));
+                rel.partners.forEach(id => {
+                    if (personMap[id].generation < gen) { personMap[id].generation = gen; changed = true; }
                 });
-            });
-            children.forEach(childId => {
-                if (personMap[childId] && !personMap[childId].relationships.includes(relIndex)) {
-                    personMap[childId].relationships.push(relIndex);
+                rel.children.forEach(id => {
+                    if (personMap[id].generation < gen + 1) { personMap[id].generation = gen + 1; changed = true; }
+                });
+                // 沒有父母的人（例如姻親的父母）往下對齊：至少是子女的上一代
+                if (rel.children.length > 0) {
+                    const childGen = Math.min(...rel.children.map(id => personMap[id].generation));
+                    rel.partners.forEach(id => {
+                        if (personMap[id].parentRels.length === 0 && personMap[id].generation < childGen - 1) { personMap[id].generation = childGen - 1; changed = true; }
+                    });
                 }
             });
+        }
+
+        const childrenOf = rel => rel.children;
+        const relsOf = id => personMap[id].rels;
+        const names = ids => ids.map(getPersonNameOrId).join(' & ');
+        const trees = [];
+
+        // --- 1. 完整家系 ---
+        const conflicts = [];
+        rels.forEach(rel => {
+            const withParents = rel.partners.filter(id => personMap[id].parentRels.length > 0);
+            if (withParents.length > 1) conflicts.push(`${names(withParents)} 兩邊都有父母`);
+        });
+        Object.values(personMap).forEach(p => {
+            if (p.parentRels.length > 1) conflicts.push(`${getPersonNameOrId(p.id)} 有兩對父母`);
+        });
+        const allIds = new Set(Object.keys(personMap));
+        const gens = new Set(Object.values(personMap).map(p => p.generation));
+        if (conflicts.length === 0) {
+            trees.push({ kind: 'full', members: allIds, name: `完整家系（${gens.size} 代）`, sortGen: -1 });
+        } else {
+            console.log('完整家系有維度衝突，改用分支樹：', conflicts);
+        }
+
+        // --- 2. 三代分支：有孫輩的伴侶是樹核 ---
+        const coveredFamilyRels = new Set(); // 已經以「完整的一家人」出現在某個三代分支的伴侶關係
+        rels.forEach(coreRel => {
+            const grandchildRels = childrenOf(coreRel).flatMap(id => relsOf(id)).filter(r => r.children.length > 0);
+            if (grandchildRels.length === 0) return;
+            const members = new Set(coreRel.partners);
+            coveredFamilyRels.add(coreRel.index);
+            childrenOf(coreRel).forEach(childId => {
+                members.add(childId);
+                relsOf(childId).forEach(childRel => {
+                    coveredFamilyRels.add(childRel.index);
+                    childRel.partners.forEach(id => members.add(id));
+                    childRel.children.forEach(grandId => {
+                        members.add(grandId);
+                        relsOf(grandId).forEach(r => r.partners.forEach(id => members.add(id)));
+                    });
+                });
+            });
+            const coreGen = Math.min(...coreRel.partners.map(id => personMap[id].generation));
+            trees.push({ kind: 'branch', members, name: `${names(coreRel.partners)}（三代分支）`, sortGen: coreGen });
         });
 
-        const potentialRoots = Object.values(personMap).filter(p => p.parents.size === 0);
-        const processedPersons = new Set();
-
-        potentialRoots.forEach(rootPerson => {
-            if (processedPersons.has(rootPerson.id)) return;
-            const currentTreeMembers = new Map();
-            const queue = [{ personNode: rootPerson, gen: 1 }];
-            const visitedInThisTree = new Set([rootPerson.id]);
-            let maxGeneration = 1; rootPerson.generation = 1; currentTreeMembers.set(rootPerson.id, rootPerson);
-            let head = 0;
-            while(head < queue.length) {
-                const { personNode, gen } = queue[head++]; maxGeneration = Math.max(maxGeneration, gen);
-                personNode.children.forEach(childId => {
-                    const childNode = personMap[childId];
-                    if (childNode && !visitedInThisTree.has(childId)) {
-                        visitedInThisTree.add(childId); childNode.generation = gen + 1;
-                        currentTreeMembers.set(childId, childNode); queue.push({ personNode: childNode, gen: gen + 1 });
-                    }
-                });
-                personNode.partners.forEach(partnerId => {
-                    const partnerNode = personMap[partnerId];
-                    if (partnerNode && !visitedInThisTree.has(partnerId)) {
-                        visitedInThisTree.add(partnerId);
-                        if (partnerNode.generation === null) partnerNode.generation = gen;
-                        currentTreeMembers.set(partnerId, partnerNode); queue.push({ personNode: partnerNode, gen: partnerNode.generation });
-                    }
-                });
-            }
-
-            if (maxGeneration >= 3 || currentTreeMembers.size > 1) {
-                const includedPersonIds = new Set();
-                currentTreeMembers.forEach((personNode, personId) => {
-                    const generation = personNode.generation;
-                    if (maxGeneration <= 3 || (generation !== null && generation <= 3)) includedPersonIds.add(personId);
-                    else if (generation === 4) {
-                        let isDirectDescendant = false;
-                        personNode.parents.forEach(parentId => {
-                            const parentNode = currentTreeMembers.get(parentId);
-                            if (parentNode && parentNode.generation === 3 && includedPersonIds.has(parentId)) isDirectDescendant = true;
-                        });
-                        if (isDirectDescendant) includedPersonIds.add(personId);
-                    }
-                });
-                const partnersToAdd = new Set();
-                includedPersonIds.forEach(id => {
-                    const personNode = currentTreeMembers.get(id);
-                    if (personNode) {
-                        personNode.partners.forEach(partnerId => {
-                            const partnerNode = currentTreeMembers.get(partnerId);
-                            if (partnerNode && !includedPersonIds.has(partnerId)) {
-                                if (maxGeneration <= 3 || (partnerNode.generation !== null && partnerNode.generation <= 3)) partnersToAdd.add(partnerId);
-                            }
-                        });
-                    }
-                });
-                partnersToAdd.forEach(id => includedPersonIds.add(id));
-
-                let personRelFtdlSnippet = ""; const personFtdlAdded = new Set();
-                includedPersonIds.forEach(id => {
-                    const person = personMap[id];
-                    if (person && !personFtdlAdded.has(id)) {
-                        personRelFtdlSnippet += person.rawFtdl + "\n\n"; personFtdlAdded.add(id); processedPersons.add(id);
-                    }
-                });
-                const relationshipIndicesInTree = new Set();
-                includedPersonIds.forEach(id => {
-                    const person = personMap[id]; if (person) person.relationships.forEach(relIndex => relationshipIndicesInTree.add(relIndex));
-                });
-                relationshipIndicesInTree.forEach(relIndex => {
-                    const rel = parsedRelationships[relIndex];
-                    const keptPartners = (rel.data.partners || []).filter(pId => includedPersonIds.has(pId));
-                    const keptChildren = (rel.data.children || []).filter(cId => includedPersonIds.has(cId));
-                    if (keptPartners.length > 0 || keptChildren.length > 0) {
-                        const originalLines = rel.rawFtdl.split('\n'); const modifiedLines = [];
-                        let partnersLineFound = false; let childrenLineFound = false;
-                        const newPartnersContent = keptPartners.length > 0 ? `    partners: [${keptPartners.join(', ')}];` : null;
-                        const newChildrenContent = keptChildren.length > 0 ? `    children: [${keptChildren.join(', ')}];` : null;
-                        for (let i = 0; i < originalLines.length; i++) {
-                            const line = originalLines[i]; const trimmedLine = line.trim();
-                            if (trimmedLine.startsWith('relationship {')) { modifiedLines.push(line); continue; }
-                            if (trimmedLine === '}') {
-                                if (!partnersLineFound && newPartnersContent !== null) modifiedLines.push(newPartnersContent);
-                                if (!childrenLineFound && newChildrenContent !== null) modifiedLines.push(newChildrenContent);
-                                modifiedLines.push(line); continue;
-                            }
-                            if (trimmedLine.startsWith('partners:')) {
-                                partnersLineFound = true;
-                                if (newPartnersContent !== null) { const indentation = line.match(/^\s*/)?.[0] || '    '; modifiedLines.push(indentation + newPartnersContent.trimStart()); }
-                                continue;
-                            } else if (trimmedLine.startsWith('children:')) {
-                                childrenLineFound = true;
-                                if (newChildrenContent !== null) { const indentation = line.match(/^\s*/)?.[0] || '    '; modifiedLines.push(indentation + newChildrenContent.trimStart()); }
-                                continue;
-                            } modifiedLines.push(line);
-                        } personRelFtdlSnippet += modifiedLines.join('\n').trim() + "\n\n";
-                    }
-                });
-
-                const gen1PeopleIds = Array.from(includedPersonIds).map(id => personMap[id]).filter(p => p && p.generation === 1).map(p => p.id);
-                let treeName = `樹系 ${identifiedTrees.length + 1}`; // Default name
-                if (gen1PeopleIds.length > 0) {
-                    treeName = gen1PeopleIds.slice(0, 2).map(id => getPersonNameOrId(id)).join(' & ')  ;
-                } else {
-                    let minGen = Infinity; let earliestPeople = [];
-                    Array.from(includedPersonIds).map(id => personMap[id]).filter(p => p).forEach(person => {
-                        if (person.generation !== null) {
-                            if (person.generation < minGen) { minGen = person.generation; earliestPeople = [person.id]; }
-                            else if (person.generation === minGen) earliestPeople.push(person.id);
-                        }
-                    });
-                    if (earliestPeople.length > 0) treeName = earliestPeople.slice(0, 2).map(id => getPersonNameOrId(id)).join(' & ') + ' 群組';
-                    else if (Array.from(includedPersonIds).length > 0) treeName = Array.from(includedPersonIds).slice(0,2).map(id => getPersonNameOrId(id)).join(' & ') + ' (無世代資訊)';
-                }
-
-                // MODIFIED: Use treeName for dynamic subtitle, passing globalParsedMetadata
-                const finalMetadataBlock = getMetadataWithDynamicSubtitle(globalParsedMetadata, treeName);
-                const finalFtdlForOption = (finalMetadataBlock ? finalMetadataBlock + "\n\n" : "") + personRelFtdlSnippet.trim();
-
-                identifiedTrees.push({
-                    roots: gen1PeopleIds.length > 0 ? gen1PeopleIds : Array.from(includedPersonIds),
-                    name: treeName,
-                    ftdlCode: finalFtdlForOption.trim()
-                });
-            }
+        // --- 3. 沒被三代分支涵蓋的兩代家庭 ---
+        rels.forEach(rel => {
+            if (rel.children.length === 0 || coveredFamilyRels.has(rel.index)) return;
+            const members = new Set([...rel.partners, ...rel.children]);
+            rel.children.forEach(id => relsOf(id).forEach(r => r.partners.forEach(pid => members.add(pid))));
+            const gen = Math.min(...rel.partners.map(id => personMap[id].generation));
+            trees.push({ kind: 'branch', members, name: `${names(rel.partners)}（兩代）`, sortGen: gen });
         });
 
-        Object.keys(personMap).forEach(personId => {
-            if (!processedPersons.has(personId)) {
-                const groupMembers = new Set();
-                const q = [personId]; processedPersons.add(personId); groupMembers.add(personId);
-                let h = 0;
-                while(h < q.length) {
-                    const currentId = q[h++]; const currentNode = personMap[currentId];
-                    [...currentNode.partners, ...currentNode.children, ...currentNode.parents].forEach(relativeId => {
-                        if (personMap[relativeId] && !processedPersons.has(relativeId)) {
-                            processedPersons.add(relativeId); groupMembers.add(relativeId); q.push(relativeId);
-                        }
-                    });
-                }
-                if (groupMembers.size > 0) {
-                    let groupPersonRelFtdl = ""; const groupRelIndices = new Set(); const personFtdlAdded = new Set();
-                    groupMembers.forEach(id => {
-                        const person = personMap[id];
-                        if(person && !personFtdlAdded.has(id)) { groupPersonRelFtdl += person.rawFtdl + "\n\n"; personFtdlAdded.add(id); }
-                        if (person) person.relationships.forEach(idx => groupRelIndices.add(idx));
-                    });
-                    groupRelIndices.forEach(relIndex => {
-                        const rel = parsedRelationships[relIndex];
-                        const keptPartners = (rel.data.partners || []).filter(pId => groupMembers.has(pId));
-                        const keptChildren = (rel.data.children || []).filter(cId => groupMembers.has(cId));
-                        if (keptPartners.length > 0 || keptChildren.length > 0) {
-                            const originalLines = rel.rawFtdl.split('\n'); const modifiedLines = [];
-                            let partnersLineFound = false; let childrenLineFound = false;
-                            const newPartnersContent = keptPartners.length > 0 ? `    partners: [${keptPartners.join(', ')}];` : null;
-                            const newChildrenContent = keptChildren.length > 0 ? `    children: [${keptChildren.join(', ')}];` : null;
-                            for (let i = 0; i < originalLines.length; i++) {
-                                const line = originalLines[i]; const trimmedLine = line.trim();
-                                if (trimmedLine.startsWith('relationship {')) { modifiedLines.push(line); continue; }
-                                if (trimmedLine === '}') {
-                                    if (!partnersLineFound && newPartnersContent !== null) modifiedLines.push(newPartnersContent);
-                                    if (!childrenLineFound && newChildrenContent !== null) modifiedLines.push(newChildrenContent);
-                                    modifiedLines.push(line); continue;
-                                }
-                                if (trimmedLine.startsWith('partners:')) {
-                                    partnersLineFound = true;
-                                    if (newPartnersContent !== null) { const indentation = line.match(/^\s*/)?.[0] || '    '; modifiedLines.push(indentation + newPartnersContent.trimStart()); }
-                                    continue;
-                                } else if (trimmedLine.startsWith('children:')) {
-                                    childrenLineFound = true;
-                                    if (newChildrenContent !== null) { const indentation = line.match(/^\s*/)?.[0] || '    '; modifiedLines.push(indentation + newChildrenContent.trimStart()); }
-                                    continue;
-                                } modifiedLines.push(line);
-                            } groupPersonRelFtdl += modifiedLines.join('\n').trim() + "\n\n";
-                        }
-                    });
-                    
-                    const groupName = Array.from(groupMembers).slice(0, 2).map(id => getPersonNameOrId(id)).join(' & ') + (groupMembers.size > 1 ? " 群組" : " (獨立)");
-                    
-                    // MODIFIED: Use groupName for dynamic subtitle, passing globalParsedMetadata
-                    const finalMetadataBlock = getMetadataWithDynamicSubtitle(globalParsedMetadata, groupName);
-                    const finalFtdlForOption = (finalMetadataBlock ? finalMetadataBlock + "\n\n" : "") + groupPersonRelFtdl.trim();
-
-                    identifiedTrees.push({
-                        roots: Array.from(groupMembers),
-                        name: groupName,
-                        ftdlCode: finalFtdlForOption.trim()
-                    });
-                }
+        // --- 4. 不在任何分支裡的人：依關係連通成獨立群組 ---
+        const inSomeTree = new Set();
+        trees.forEach(t => { if (t.kind !== 'full') t.members.forEach(id => inSomeTree.add(id)); });
+        Object.keys(personMap).forEach(startId => {
+            if (inSomeTree.has(startId)) return;
+            const members = new Set([startId]); inSomeTree.add(startId);
+            const queue = [startId];
+            while (queue.length) {
+                const id = queue.shift();
+                const neighbours = [
+                    ...relsOf(id).flatMap(r => [...r.partners, ...r.children]),
+                    ...personMap[id].parentRels.flatMap(r => r.partners)
+                ];
+                neighbours.forEach(n => { if (!inSomeTree.has(n)) { inSomeTree.add(n); members.add(n); queue.push(n); } });
             }
+            const ids = Array.from(members);
+            trees.push({
+                kind: 'group', members,
+                name: names(ids.slice(0, 2)) + (ids.length > 1 ? ' 群組' : '（獨立）'),
+                sortGen: Math.min(...ids.map(id => personMap[id].generation))
+            });
         });
-        identifiedTrees.sort((a, b) => a.name.localeCompare(b.name));
+
+        // 內容完全相同的視圖只留一個（例如只有三代時，完整家系就等於唯一的分支）
+        const seen = new Set();
+        const order = { full: 0, branch: 1, group: 2 };
+        trees.sort((a, b) => order[a.kind] - order[b.kind] || a.sortGen - b.sortGen || a.name.localeCompare(b.name));
+        trees.forEach(tree => {
+            const key = Array.from(tree.members).sort().join('|');
+            if (seen.has(key)) return;
+            seen.add(key);
+            identifiedTrees.push({
+                kind: tree.kind,
+                roots: Array.from(tree.members),
+                name: tree.name,
+                ftdlCode: buildTreeFtdl(tree.members, tree.name.replace(/（.*）$/, ''))
+            });
+        });
         console.log(`Identification complete. Found ${identifiedTrees.length} trees/groups.`);
     }
 
@@ -634,12 +591,11 @@ function executeAndSelectTree() {
     populateSelectorList();
     switchToCanvasView();
         if (currentOptions.length > 0) {
-            showSelectorPanel();
+            // 預設畫第一個視圖：能一次畫完時是「完整家系」，否則是最上層的分支
+            if (currentOptions.length > 1) showSelectorPanel(); else hideSelectorPanel();
             setTimeout(() => {
-                if (currentOptions.length === 1 && selectorList) {
-                    const firstItem = selectorList.querySelector('li[data-option-index="0"]');
-                    if (firstItem) handleOptionSelection(0, firstItem); else handleOptionSelection(0, null);
-                } else if (selectorList) globalClearFunction();
+                const firstItem = selectorList ? selectorList.querySelector('li[data-option-index="0"]') : null;
+                handleOptionSelection(0, firstItem);
             }, 50);
         } else { hideSelectorPanel(); globalClearFunction(); }
     }

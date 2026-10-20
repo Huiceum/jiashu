@@ -409,7 +409,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                         if (!generationChangeHistory.has(partnerId)) generationChangeHistory.set(partnerId, 0);
                                         if (generationChangeHistory.get(partnerId) > 3) return;
                                     }
-                                    if (!generationMap.has(partnerId) || generationMap.get(partnerId) !== personGeneration) {
+                                    // 伴侶只往下對齊（取較晚的一代），避免嫁娶進來、沒有父母的伴侶把對方拉回上一代，
+                                    // 否則結果會依人物在程式碼裡的順序而不同
+                                    if (!generationMap.has(partnerId) || generationMap.get(partnerId) < personGeneration) {
                                         generationMap.set(partnerId, personGeneration);
                                         if (isProblematic) generationChangeHistory.set(partnerId, generationChangeHistory.get(partnerId) + 1);
                                         changed = true;
