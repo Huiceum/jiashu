@@ -36,7 +36,6 @@ person {
   proband: true;                  // 先證者（圖的主角，通常只有一位）
   chronic: true;                  // 慢性病：只用於身體疾病
   Disability: true;               // 身心障礙（D 大寫）：精神障礙、智能障礙、自閉症、肢體／感官障礙
-  wellbeing: 0–1;                 // 身心狀態分數，0 = 很差、1 = 很好，決定節點顏色
   fill: sand|mist|apricot|amber|clay|stone|#RRGGBB;  // 直接指定節點顏色（少用）
   note: 備註;
 }
@@ -75,8 +74,10 @@ tie {                             // 關係強弱標記：單向弧線箭頭，�
 
 ## 結構
 - 親子關係只能寫在父母那段 relationship 的 children 裡。
-- 單親或另一位家長不明時，partners 只寫一個人。
+- 每個孩子原則上都有兩位親生父母，children 要寫在「兩位親生父母」那段 relationship 裡（見下方「補上不詳的親生父母」）。
 - 描述明確說某人性別不明、未知或不記得時，寫 gender: other。
+- 同一個人不能同時出現在同一段 relationship 的 partners 和 children；一個人只能出現在一段 relationship 的 children（他自己的親生父母那段）。
+- 「阿嬤」「阿公」「爺爺」「奶奶」是父母那一代的上一代：例如「爸爸的媽媽（阿嬤）」要寫成 relationship { partners: [阿公或不詳的阿公, 阿嬤]; children: [爸爸, 爸爸的手足]; }，絕對不能把爸爸寫成阿嬤的伴侶。
 - 用拼音或英文當 id，例如 wang_daming、father、child1。
 - 描述沒有寫明是誰的故事時，把敘事的主角（標題或故事圍繞的那個人）設為 proband。
 - 描述只說「年紀很輕就當媽媽」「六十多歲」這類模糊年齡時，取合理的整數年齡換算，例如六十多歲取 65。
@@ -86,13 +87,20 @@ tie {                             // 關係強弱標記：單向弧線箭頭，�
 - 「娶」「嫁」「結婚」「太太」「先生」「老公」「老婆」「媳婦」「女婿」「夫妻倆」「兩人的孩子」都代表一對伴侶，一定要寫成 relationship。即使婚姻和孩子分在不同段落，或孩子在很後面才提到，也要寫進同一段 relationship 的 children。
 - 從稱謂推回關係：「叔叔」「姑姑」是父親的手足，「舅舅」「阿姨」是母親的手足；「外公、外婆」是母親的父母，「爺爺、奶奶」是父親的父母；「孫子」「姪子」「外甥」「曾孫」同理。必要時補出中間那一代的人。
 - 從「長子」「次子」「哥哥」「妹妹」「兩個孩子」「兄弟姊妹」推出同一對父母的所有子女，全部寫進同一段 relationship 的 children。
-- 描述說某人是「某某的兒子／女兒」，但沒提另一位家長時：若同一段描述有提到某某的配偶，就是這對夫妻的孩子；真的沒有配偶，才寫單親 relationship。
+- 描述說某人是「某某的兒子／女兒」，但沒提另一位家長時：若同一段描述有提到某某的配偶，就是這對夫妻的孩子；真的沒有配偶，就補上一位不詳的另一位家長（見下一節）。
+
+## 補上不詳的親生父母
+- 只要有人有孩子，就假設孩子是兩個人生的。描述只提到一位親生家長時，補上另一位：id 用 unknown_ 開頭（例如 unknown_mother_of_xiaoming），name 寫「生母（不詳）」「生父（不詳）」或「另一位家長（不詳）」；能從脈絡判斷性別就寫，否則 gender: other；不寫出生年等其他欄位。
+- 補上的家長和已知家長寫成一段 relationship，children 放孩子；兩人的婚姻關係不明時，不寫 status，也不寫 start_date、end_date。
+- 「繼母」「繼父」「後母」「後爸」不是親生家長：描述只提到「爸爸和繼母」時，要補上一位不詳的生母，孩子寫在「爸爸＋生母」那段 relationship 的 children；爸爸和繼母另外寫一段 relationship，只有他們親生的孩子才寫進這段的 children。爸爸和生母的婚姻狀態不明（可能離婚，也可能喪偶），所以不寫 status。
+- 收養、寄養的孩子仍寫在養父母那段 relationship 的 children，並在孩子的 note 註明「收養」或「寄養」；不需要另外補生父母，除非描述有提到。
 - 描述提到的人只有名字、沒說明和別人的關係時，可以依姓氏、敘事脈絡判斷，並把他接到最合理的位置。
 - 輸出前逐一檢查：
   1. 每一對伴侶都有 relationship。
   2. 每個孩子都出現在父母那段的 children 裡。
   3. 除了嫁娶進來的配偶，每個人都和其他人相連，沒有孤立的人。
   4. 每一代都接得上下一代。
+  5. 沒有人同時是同一段關係的伴侶和孩子，也沒有人變成自己的祖先。
 
 ## 健康狀況
 - 精神疾病與精神障礙一律寫 Disability: true，不可以寫成 chronic，即使描述說「長期」「慢性」或「定期回診」也一樣。例如思覺失調症、雙相情緒障礙症（躁鬱症）、憂鬱症、焦慮症、強迫症、創傷後壓力症候群、失智症、自閉症、注意力不足過動症、智能障礙。
@@ -104,7 +112,8 @@ tie {                             // 關係強弱標記：單向弧線箭頭，�
 ## 程度與關係
 - 文字描述的程度要換成 0–1：很差 0.1、差 0.3、普通 0.5、好 0.7、很好 0.9。
 - 描述提到某人對另一人的感情（親近、在意、疏遠、衝突）時才寫 bond，不限親子，夫妻、手足、祖孫都可以；箭頭方向就是感情的方向，雙方各自的感受各寫一個 bond（方向相反）。
-- 只有描述提到身心狀態、婚姻品質時，才寫 wellbeing、quality。
+- 只有描述提到婚姻品質時，才寫 quality。
+- 身心狀態不要量化成分數；描述有提到（例如「最近很低落」「狀況穩定」）時，用 2–10 個字寫進 note。
 - 只有描述明確指定家庭類型（例如「緊密互動型」）時，才寫 metadata 的 family_type 和 background；不可以自己替家庭歸類或命名類型，也不要自行加底色。
 - 描述提到兩人關係的強弱或性質（例如「很依賴」「關係破裂」「非常在意」）時寫 tie；tie 一律有方向，雙方各自的感受各寫一個。
 - 故事多半是敘事文字，不會直接列出關係：要從情節自己歸納。例如「每天陪女兒把面試講完」→ 媽媽對女兒 tie「強烈」或「陪伴」；「住在家裡卻和爸爸最不親」→ 兒子對爸爸 tie「同住不同心」（dashed）；「常為小事吵架」→ 夫妻間 tie「緊繃」（dashed）。label 用 2–4 個字概括。
@@ -120,7 +129,7 @@ metadata {
 }
 person { id: wang_daming; name: 王大明; gender: male; birth: 1962; note: 銀行上班; }
 person { id: lin_meihua; name: 林美華; gender: female; birth: 1964; }
-person { id: wang_xiaojie; name: 王小傑; gender: male; birth: 1996; proband: true; wellbeing: 0.8; note: 剛退伍，同住; }
+person { id: wang_xiaojie; name: 王小傑; gender: male; birth: 1996; proband: true; note: 剛退伍，同住; }
 relationship {
     partners: [wang_daming, lin_meihua];
     type: marriage;
@@ -133,6 +142,44 @@ bond { from: wang_daming; to: wang_xiaojie; closeness: 0.9; }
 bond { from: wang_xiaojie; to: wang_daming; closeness: 0.5; }
 tie { from: wang_daming; to: wang_xiaojie; line: thick; label: 疼愛; }
 tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
+
+    // 引導助手：以對話陪使用者整理家庭故事，不直接產生 FTDL；資訊足夠時提醒使用者交給生成助手
+    const GUIDE_PROMPT = `你是「家書 Jiashu」的引導助手。家書是一個用一段話畫出家系圖的工具。你的任務是透過溫和、有結構的引導式對話，陪使用者把家庭故事整理清楚，讓後續能畫出完整、正確的家系圖。
+
+# 身分與界線
+- 介紹自己時只說「引導助手」，不要自稱社工師、諮商師、心理師或治療師，也不要說自己有任何專業證照。
+- 你可以運用會談技巧（傾聽、摘要、開放式提問、具體化），但不做診斷、不提供治療或用藥建議。
+- 如果使用者提到自傷、自殺念頭、正在受暴或有立即危險，先關心對方的安全，並提供台灣的求助資源：安心專線 1925、保護專線 113、緊急情況撥 110 或 119。
+- 不要輸出 FTDL 或任何程式碼；畫圖由「生成助手」負責。
+
+# 對話方式
+- 一律使用繁體中文，語氣自然、溫暖、精簡，不說教。
+- 每次回覆：先用一兩句回應或摘要使用者剛說的重點，再提出 1–3 個具體問題。不要一次丟出一長串問題。
+- 跟著使用者的節奏；對方不想談的部分就先跳過，之後再視情況回來。
+- 已經知道的資訊不要重複問；資訊互相矛盾時，溫和地確認。
+
+# 引導流程
+1. 先訂目標：這張家系圖要用在哪裡（研究、個案工作、教學、自我探索、家族紀錄）？圖的主角（案主）是誰？想畫幾代、想看清楚什麼（例如精神健康的家族史、照顧壓力、關係衝突、遷移或再婚）？
+2. 再收集家庭結構，大致依序：案主本人 → 父母與手足 → 祖父母與父母的手足 → 伴侶與子女 → 其他重要的人。
+3. 每個人盡量確認：稱呼或姓名、性別、出生年或年齡、是否過世與過世年份。
+4. 重要事件：結婚、離婚、分居、喪偶、再婚（哪一段婚姻生了哪些孩子）、收養或寄養、同居伴侶。只知道一位親生家長時，可以問另一位是誰；不知道也沒關係，工具會標成「不詳」。
+5. 健康：慢性病（身體疾病）、身心障礙、精神疾病（例如思覺失調症、雙相情緒障礙症、憂鬱症），以及目前的生活與健康狀況。
+6. 關係：誰和誰特別親近、依賴、疏離、衝突或斷絕往來，以及這份感情的方向（例如媽媽很依賴女兒，但女兒覺得有壓力）。
+7. 依使用者的目標，再深入探索與目標相關的故事。
+
+# 你需要知道的工具功能（使用者問到時可以說明，或在適當時機簡短提起）
+- 家系圖可以記錄：姓名、性別（男、女、其他或不詳）、出生與過世年份、案主、慢性病、身心障礙、備註。
+- 婚姻與伴侶：婚姻或非婚伴侶、狀態（已婚、同居、離婚、分居、喪偶、婚姻無效）、開始與結束年份、婚姻品質（決定夫妻線粗細）。近親結婚會用雙橫線標示。
+- 關係線：有方向的感情線（深厚程度決定粗細；可標示疏遠、衝突、斷絕往來、非常親密），以及帶文字的關係標記（例如「依賴」「擔憂」「破裂」）。
+- 家庭類型與底色、圖例會自動產生。
+- 代數很多或兩邊家族都畫時，會自動拆成幾個直系視圖，可以在右上角切換。
+- 可以匯出 PNG、去背 PNG、SVG、PDF，也可以在圖的右側附上每個人的詳細資料。
+- 這個聊天室會保存對話，可以用 #編號 提及之前的某一筆。
+
+# 交給生成助手
+- 當你判斷資訊已經足以畫出一張基本的家系圖（至少知道案主、案主的父母與手足，或案主的伴侶與子女的基本資料），或使用者表示想先看看圖時，在回覆最後提醒：「如果覺得資訊差不多了，可以按輸入框旁的「產生家系圖」，我會把目前聊天室裡的所有資訊交給生成助手畫出來；之後還可以繼續補充。」
+- 這個提醒不要每次都說；資訊有明顯增加，或使用者問「然後呢」「可以畫了嗎」時再提。
+- 使用者畫出圖之後，可以協助檢查還缺什麼、哪些關係可以再補充。`;
 
     // --- 設定 ---
     function getKey() {
@@ -260,7 +307,7 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
 
     // 用串流（SSE）接收回應：模型邊產生邊傳回，連線不會因為長時間沒有資料而被瀏覽器（尤其 Safari）切斷。
     // 連線中斷（Safari 顯示為 "Load failed"）或逾時時自動重試；HTTP 錯誤不重試
-    async function streamOnce(url, options) {
+    async function streamOnce(url, options, onText) {
         const controller = new AbortController();
         let timer;
         // 逾時以「多久沒收到新資料」計算，長回應只要持續有資料就不會被中斷
@@ -297,7 +344,8 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                 if (candidate && candidate.content && candidate.content.parts) {
                     const parts = candidate.content.parts;
                     if (parts.some(p => p.thought)) setStatus(`${getModel()} 正在思考…`);
-                    text += parts.filter(p => !p.thought).map(p => p.text || '').join('');
+                    const piece = parts.filter(p => !p.thought).map(p => p.text || '').join('');
+                    if (piece) { text += piece; if (onText) onText(text); }
                 }
                 if (candidate && candidate.finishReason) finishReason = candidate.finishReason;
                 if (data.promptFeedback && data.promptFeedback.blockReason) blockReason = data.promptFeedback.blockReason;
@@ -320,11 +368,11 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         }
     }
 
-    async function streamWithRetry(url, options) {
+    async function streamWithRetry(url, options, onText) {
         let lastError;
         for (let attempt = 0; attempt <= NETWORK_RETRIES; attempt++) {
             try {
-                return await streamOnce(url, options);
+                return await streamOnce(url, options, onText);
             } catch (err) {
                 if (err.status || err.message.startsWith('模型沒有回傳內容')) throw err;
                 lastError = err;
@@ -339,21 +387,23 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         throw lastError;
     }
 
-    async function callGemini(contents) {
+    // mode：'generate' 用生成 FTDL 的提示詞，'guide' 用引導助手的提示詞；onText 會在每次收到新文字時呼叫
+    async function callGemini(contents, { mode = 'generate', onText = null } = {}) {
         const model = getModel();
+        const prompt = (mode === 'guide' ? GUIDE_PROMPT : SYSTEM_PROMPT).replace('{{TODAY_YEAR}}', String(new Date().getFullYear()));
         return streamWithRetry(`${API_BASE}/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() },
             body: JSON.stringify({
-                systemInstruction: { parts: [{ text: SYSTEM_PROMPT.replace('{{TODAY_YEAR}}', String(new Date().getFullYear())) }] },
+                systemInstruction: { parts: [{ text: prompt }] },
                 contents,
                 generationConfig: {
-                    temperature: CONFIG.temperature ?? 0.2,
+                    temperature: mode === 'guide' ? (CONFIG.guideTemperature ?? 0.7) : (CONFIG.temperature ?? 0.2),
                     // 讓思考摘要也串流回來，模型思考期間連線持續有資料，不會被當成閒置或逾時
                     thinkingConfig: { includeThoughts: true }
                 }
             })
-        });
+        }, onText);
     }
 
     function extractFtdl(text) {
@@ -389,42 +439,112 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         }));
     }
 
+    // 找出會形成循環的親子關係：某人同時是同一段關係的伴侶與孩子，或某人成了自己的祖先
+    function findCycles(ftdl) {
+        const rels = [];
+        const re = /relationship\s*\{([^}]*)\}/g;
+        let m;
+        while ((m = re.exec(ftdl))) {
+            const list = key => ((m[1].match(new RegExp(`\\b${key}\\s*:\\s*\\[([^\\]]*)\\]`)) || [])[1] || '').split(',').map(x => x.trim()).filter(Boolean);
+            rels.push({ partners: list('partners'), children: list('children'), lineNumber: ftdl.slice(0, m.index).split('\n').length });
+        }
+        const issues = [];
+        rels.forEach(r => r.children.filter(c => r.partners.includes(c)).forEach(c => issues.push({
+            lineNumber: r.lineNumber,
+            message: `${c} 同時是這段 relationship 的 partners 與 children，等於是自己的孩子。請改成他和他真正的伴侶（或不詳的另一位家長）那段關係，孩子寫在他自己父母那段關係裡。`
+        })));
+        const parentsOf = id => rels.filter(r => r.children.includes(id)).flatMap(r => r.partners);
+        const isAncestor = (anc, id, seen = new Set()) => parentsOf(id).some(p => p === anc || (!seen.has(p) && seen.add(p) && isAncestor(anc, p, seen)));
+        rels.forEach(r => r.children.forEach(c => {
+            if (r.partners.includes(c)) return;
+            if (r.partners.some(p => isAncestor(c, p))) issues.push({
+                lineNumber: r.lineNumber,
+                message: `${c} 是這段 relationship 某位伴侶的祖先，卻又被寫成他們的孩子，形成循環。請檢查世代關係。`
+            });
+        }));
+        return issues;
+    }
+
     function loadIntoEditor(ftdl) {
         editor.value = ftdl;
         editor.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
         const errors = typeof window.ftdlValidate === 'function' ? window.ftdlValidate() : [];
-        return errors.length > 0 ? errors : findIsolatedPeople(ftdl);
+        if (errors.length > 0) return errors;
+        const cycles = findCycles(ftdl);
+        return cycles.length > 0 ? cycles : findIsolatedPeople(ftdl);
     }
 
-    // --- 對話紀錄（存在這個瀏覽器的 localStorage，最多 10 段） ---
-    // 每段有固定編號（#1、#2…），刪除後編號不會重複使用；
-    // 在輸入框打 #編號，送出時會自動把那一段的描述與 FTDL 當作前情帶給模型，不必再複製貼上。
-    const HISTORY_STORAGE = 'ftdlConversationHistory';
-    const HISTORY_LIMIT = 10;
+    // 排版時略過的循環或重複父母（例如手動在編輯器寫錯），在狀態列提醒
+    document.addEventListener('ftdl-structure-warning', e => {
+        const list = [...new Set(e.detail || [])];
+        if (list.length) setStatus(`家系圖有資料錯誤，已自動略過：${list.join('；')}。請到「編輯」頁修正。`, 'error');
+    });
 
-    function loadHistory() {
+    // --- 聊天室（存在這個瀏覽器的 localStorage） ---
+    // 最多 10 個聊天室，超過時刪除最早建立的；每個聊天室最多 20 筆對話（一筆＝使用者訊息＋助手回覆），
+    // 超過時從第 2 筆開始刪除較舊的，第 1 筆（通常是最初的家庭故事）永遠保留。
+    // 每筆有固定編號（#1、#2…），刪除後不會重複使用；在輸入框打 #編號 可以提及聊天室裡的某一筆。
+    const CHAT_STORAGE = 'ftdlChatRooms';
+    const MODE_STORAGE = 'ftdlAssistantMode';
+    const ROOM_LIMIT = 10;
+    const ITEM_LIMIT = 20;
+    const DEFAULT_ROOM_TITLE = '新聊天室';
+    const HANDOFF_TEXT = '請根據這個聊天室到目前為止的所有資訊，產生完整的家系圖。';
+
+    function loadChat() {
         try {
-            const data = JSON.parse(localStorage.getItem(HISTORY_STORAGE) || 'null');
-            if (data && Array.isArray(data.items)) return { seq: data.seq || 0, items: data.items };
+            const data = JSON.parse(localStorage.getItem(CHAT_STORAGE) || 'null');
+            if (data && Array.isArray(data.rooms)) return { roomSeq: data.roomSeq || 0, currentId: data.currentId || null, rooms: data.rooms };
         } catch (e) { /* 資料損毀或無法使用 localStorage */ }
-        return { seq: 0, items: [] };
+        return { roomSeq: 0, currentId: null, rooms: [] };
     }
-    function saveHistory(history) {
-        try { localStorage.setItem(HISTORY_STORAGE, JSON.stringify(history)); return true; } catch (e) { return false; }
+    function saveChat(chat) {
+        try { localStorage.setItem(CHAT_STORAGE, JSON.stringify(chat)); return true; } catch (e) {
+            setStatus('瀏覽器的儲存空間不足或無法使用，這次的對話沒有存進聊天室。', 'error');
+            return false;
+        }
     }
-    function addHistoryRecord(prompt, ftdl, refs) {
-        const history = loadHistory();
-        const record = { no: history.seq + 1, prompt, ftdl, refs, createdAt: Date.now(), updatedAt: null };
-        history.seq = record.no;
-        history.items.unshift(record);
-        history.items = history.items.slice(0, HISTORY_LIMIT);
-        saveHistory(history);
-        renderHistory();
-        return record;
+    function currentRoom(chat) {
+        return chat.rooms.find(r => r.id === chat.currentId) || null;
     }
-    function findHistoryRecord(no) {
-        return loadHistory().items.find(r => r.no === no) || null;
+    function createRoom(chat) {
+        const room = { id: chat.roomSeq + 1, title: DEFAULT_ROOM_TITLE, seq: 0, items: [], createdAt: Date.now(), updatedAt: Date.now(), trimmedAt: null };
+        chat.roomSeq = room.id;
+        chat.rooms.push(room);
+        // 超過 10 個時刪除最早建立的
+        chat.rooms.sort((a, b) => a.createdAt - b.createdAt);
+        let removed = null;
+        while (chat.rooms.length > ROOM_LIMIT) removed = chat.rooms.shift();
+        chat.currentId = room.id;
+        if (removed) setStatus(`聊天室已達 ${ROOM_LIMIT} 個上限，已刪除最早的「${removed.title}」。`);
+        return room;
     }
+    function ensureRoom(chat) {
+        return currentRoom(chat) || createRoom(chat);
+    }
+    function addItem(item) {
+        const chat = loadChat();
+        const room = ensureRoom(chat);
+        item.no = room.seq + 1;
+        item.createdAt = Date.now();
+        room.seq = item.no;
+        room.items.push(item);
+        if (room.title === DEFAULT_ROOM_TITLE && item.user && item.mode !== 'handoff') {
+            room.title = item.user.replace(/\s+/g, ' ').slice(0, 18) + (item.user.length > 18 ? '…' : '');
+        }
+        // 超過 20 筆：保留第 1 筆，從第 2 筆開始刪除較舊的
+        const removed = [];
+        while (room.items.length > ITEM_LIMIT) removed.push(room.items.splice(1, 1)[0].no);
+        if (removed.length) room.trimmedAt = Date.now();
+        room.updatedAt = Date.now();
+        saveChat(chat);
+        renderChat();
+        return { item, room, removed };
+    }
+    function latestFtdlItem(room) {
+        return room ? [...room.items].reverse().find(it => it.ftdl) || null : null;
+    }
+
     const parseRefs = text => [...new Set((text.match(/#(\d+)/g) || []).map(m => parseInt(m.slice(1), 10)))];
     const countPeople = ftdl => (ftdl.match(/(^|[\s;}])person\s*\{/g) || []).length;
     const formatTime = ms => {
@@ -433,189 +553,453 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     };
 
-    const historyBtn = document.createElement('button');
-    historyBtn.id = 'ai-history-btn';
-    historyBtn.type = 'button';
-    historyBtn.title = '對話紀錄（最多 10 段）';
-    historyBtn.innerHTML = '<img src="assets/cats/cat-6-sm.webp" width="22" height="22" alt=""><span>紀錄</span><span class="history-count"></span>';
-    if (dialogue && input) dialogue.insertBefore(historyBtn, input);
-
-    const historyPanel = document.createElement('div');
-    historyPanel.id = 'ai-history-panel';
-    historyPanel.setAttribute('role', 'dialog');
-    historyPanel.setAttribute('aria-label', '對話紀錄');
-    historyPanel.innerHTML = `
-        <div class="history-head">
-            <div>
-                <div class="history-title">對話紀錄</div>
-                <div class="history-hint">最多保留 10 段。在輸入框打 <code>#編號</code>，送出時會自動帶入那一段的描述與家系圖。</div>
-            </div>
-            <button type="button" class="history-close" aria-label="關閉">×</button>
-        </div>
-        <div class="history-list"></div>`;
-    document.body.appendChild(historyPanel);
-    const historyList = historyPanel.querySelector('.history-list');
-    let editingNo = null;
-
-    function positionHistoryPanel() {
-        const r = dialogue.getBoundingClientRect();
-        historyPanel.style.left = `${Math.max(12, r.left + 16)}px`;
-        historyPanel.style.bottom = `${Math.max(12, window.innerHeight - r.top + 8)}px`;
-        historyPanel.style.width = `${Math.min(580, r.width - 32)}px`;
+    // 帶給模型的前情：聊天室裡的每一筆對話依序放入；舊的 FTDL 只留摘要，
+    // 最新的一份與被 #編號 提及的那幾筆才附上完整 FTDL，以節省 token
+    function buildContents(room, question, mode) {
+        const contents = [];
+        const refs = parseRefs(question);
+        const latest = latestFtdlItem(room);
+        (room ? room.items : []).forEach(it => {
+            const label = it.mode === 'guide' ? '引導對話' : '生成家系圖';
+            contents.push({ role: 'user', parts: [{ text: `（聊天室第 #${it.no} 筆，${label}）${it.user}` }] });
+            let reply;
+            if (it.ftdl) {
+                reply = (latest && it.no === latest.no) || refs.includes(it.no)
+                    ? it.ftdl
+                    : `（第 #${it.no} 筆產生了一份 FTDL，共 ${countPeople(it.ftdl)} 人；內容已省略，最新的版本在後面。）`;
+            } else {
+                reply = it.reply || '（沒有回覆）';
+            }
+            contents.push({ role: 'model', parts: [{ text: reply }] });
+        });
+        let note = '';
+        if (room && room.items.length) {
+            note = mode === 'guide'
+                ? ''
+                : `\n\n（以上是這個聊天室先前的對話。${latest ? `請以最新的 FTDL（第 #${latest.no} 筆）為基礎，` : '請整合聊天室裡所有的家庭資訊，'}依照這次的要求輸出更新後完整的 FTDL。）`;
+        }
+        contents.push({ role: 'user', parts: [{ text: question + note }] });
+        return contents;
     }
-    function openHistory() { editingNo = null; renderHistory(); positionHistoryPanel(); historyPanel.classList.add('visible'); }
-    function closeHistory() { historyPanel.classList.remove('visible'); editingNo = null; }
 
-    function actionButton(text, handler, extraClass = '') {
+    // --- 介面：模式切換、聊天室按鈕、交給生成助手、聊天室側欄 ---
+    let mode = 'generate';
+    try { if (localStorage.getItem(MODE_STORAGE) === 'guide') mode = 'guide'; } catch (e) { /* 忽略 */ }
+
+    const chatBtn = document.createElement('button');
+    chatBtn.id = 'ai-chat-btn';
+    chatBtn.type = 'button';
+    chatBtn.title = '聊天室（最多 10 個，每個最多 20 筆）';
+    chatBtn.innerHTML = '<img src="assets/cats/cat-6-sm.webp" width="22" height="22" alt=""><span>聊天室</span><span class="chat-count"></span>';
+
+    const modeToggle = document.createElement('div');
+    modeToggle.id = 'ai-mode-toggle';
+    modeToggle.setAttribute('role', 'group');
+    modeToggle.setAttribute('aria-label', '助手模式');
+    modeToggle.innerHTML = `
+        <button type="button" data-mode="generate" title="直接把描述轉成家系圖">生成</button>
+        <button type="button" data-mode="guide" title="由引導助手陪你一步步整理家庭故事">引導</button>`;
+
+    const handoffBtn = document.createElement('button');
+    handoffBtn.id = 'ai-handoff-btn';
+    handoffBtn.type = 'button';
+    handoffBtn.textContent = '產生家系圖';
+    handoffBtn.title = '把這個聊天室目前的所有資訊交給生成助手，畫出家系圖';
+
+    if (dialogue && input) {
+        dialogue.insertBefore(chatBtn, input);
+        dialogue.insertBefore(modeToggle, input);
+    }
+    if (runBtn) runBtn.insertAdjacentElement('beforebegin', handoffBtn);
+
+    const PLACEHOLDERS = {
+        generate: '描述家庭成員與關係，例如：父親 1968 年生……（Shift+Enter 送出，#編號 可提及）',
+        guide: '和引導助手聊聊你想畫的家庭，例如：我想整理我們家三代的關係……（Shift+Enter 送出）'
+    };
+    function applyMode(next) {
+        mode = next;
+        try { localStorage.setItem(MODE_STORAGE, mode); } catch (e) { /* 忽略 */ }
+        modeToggle.querySelectorAll('button').forEach(b => {
+            const on = b.dataset.mode === mode;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', String(on));
+        });
+        handoffBtn.style.display = mode === 'guide' ? '' : 'none';
+        if (input) input.placeholder = PLACEHOLDERS[mode];
+    }
+    modeToggle.querySelectorAll('button').forEach(b => b.addEventListener('click', () => applyMode(b.dataset.mode)));
+
+    const drawer = document.createElement('aside');
+    drawer.id = 'chat-drawer';
+    drawer.setAttribute('aria-label', '聊天室');
+    drawer.innerHTML = `
+        <div class="chat-head">
+            <div class="chat-head-row">
+                <select class="chat-room-select" aria-label="選擇聊天室"></select>
+                <button type="button" class="chat-new" title="開一個新的聊天室">＋ 新聊天室</button>
+                <button type="button" class="chat-close" aria-label="關閉聊天室">×</button>
+            </div>
+            <div class="chat-head-row chat-tools">
+                <button type="button" class="chat-load-latest" title="把這個聊天室最新的一份 FTDL 載入編輯器並畫出來">載入最新家系圖</button>
+                <button type="button" class="chat-rename">重新命名</button>
+                <button type="button" class="chat-delete-room">刪除聊天室</button>
+                <span class="chat-capacity"></span>
+            </div>
+            <div class="chat-notice" hidden></div>
+        </div>
+        <div class="chat-body"></div>`;
+    document.body.appendChild(drawer);
+    const roomSelect = drawer.querySelector('.chat-room-select');
+    const chatBody = drawer.querySelector('.chat-body');
+    const notice = drawer.querySelector('.chat-notice');
+    let editingNo = null;
+    let pending = null; // 送出中的那一筆：{ user, mode, text }
+
+    function positionDrawer() {
+        const header = document.getElementById('app-header');
+        const top = header ? header.getBoundingClientRect().bottom : 0;
+        const bottom = dialogue ? window.innerHeight - dialogue.getBoundingClientRect().top : 0;
+        drawer.style.top = `${top}px`;
+        drawer.style.bottom = `${bottom}px`;
+    }
+    // 側欄打開時在 body 加上 chat-open，讓畫布右上角的樹系選擇按鈕與面板往左讓開
+    function openDrawer() { positionDrawer(); drawer.classList.add('visible'); chatBtn.classList.add('active'); document.body.classList.add('chat-open'); scrollChatToEnd(); }
+    function closeDrawer() { drawer.classList.remove('visible'); chatBtn.classList.remove('active'); document.body.classList.remove('chat-open'); editingNo = null; }
+    function scrollChatToEnd() { chatBody.scrollTop = chatBody.scrollHeight; }
+
+    function smallButton(text, handler, extraClass = '') {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = `history-action ${extraClass}`.trim();
+        b.className = `chat-action ${extraClass}`.trim();
         b.textContent = text;
         b.addEventListener('click', e => { e.stopPropagation(); handler(); });
         return b;
     }
-
-    function renderHistory() {
-        const { items } = loadHistory();
-        historyBtn.querySelector('.history-count').textContent = items.length ? String(items.length) : '';
-        historyList.innerHTML = '';
-        if (!items.length) {
-            const empty = document.createElement('div');
-            empty.className = 'history-empty';
-            empty.innerHTML = '<img src="assets/cats/cat-6-sm.webp" width="48" height="48" alt=""><div>還沒有紀錄。送出描述、產生家系圖後，會自動存在這裡。</div>';
-            historyList.appendChild(empty);
-            return;
-        }
-        items.forEach(record => {
-            const item = document.createElement('div');
-            item.className = 'history-item';
-            const meta = document.createElement('div');
-            meta.className = 'history-meta';
-            const badge = document.createElement('span');
-            badge.className = 'history-no';
-            badge.textContent = `#${record.no}`;
-            meta.appendChild(badge);
-            const info = document.createElement('span');
-            const parts = [formatTime(record.createdAt), `${countPeople(record.ftdl)} 人`];
-            if (record.refs && record.refs.length) parts.push(`引用 ${record.refs.map(n => '#' + n).join('、')}`);
-            if (record.updatedAt) parts.push('已編輯');
-            info.textContent = parts.join(' · ');
-            meta.appendChild(info);
-            item.appendChild(meta);
-
-            if (editingNo === record.no) {
-                const promptBox = document.createElement('textarea');
-                promptBox.className = 'history-edit-prompt';
-                promptBox.value = record.prompt;
-                promptBox.rows = 3;
-                const ftdlBox = document.createElement('textarea');
-                ftdlBox.className = 'history-edit-ftdl';
-                ftdlBox.value = record.ftdl;
-                ftdlBox.rows = 8;
-                ftdlBox.spellcheck = false;
-                const labelA = document.createElement('label'); labelA.textContent = '描述';
-                const labelB = document.createElement('label'); labelB.textContent = 'FTDL（被提及時會帶入這份內容）';
-                item.append(labelA, promptBox, labelB, ftdlBox);
-                const actions = document.createElement('div');
-                actions.className = 'history-actions';
-                actions.append(
-                    actionButton('取消', () => { editingNo = null; renderHistory(); }),
-                    actionButton('儲存', () => {
-                        const history = loadHistory();
-                        const target = history.items.find(r => r.no === record.no);
-                        if (target) {
-                            target.prompt = promptBox.value.trim() || target.prompt;
-                            target.ftdl = ftdlBox.value.trim();
-                            target.updatedAt = Date.now();
-                            saveHistory(history);
-                        }
-                        editingNo = null;
-                        renderHistory();
-                    }, 'primary')
-                );
-                item.appendChild(actions);
-            } else {
-                const prompt = document.createElement('div');
-                prompt.className = 'history-prompt';
-                prompt.textContent = record.prompt;
-                item.appendChild(prompt);
-                const actions = document.createElement('div');
-                actions.className = 'history-actions';
-                actions.append(
-                    actionButton('載入', () => {
-                        editor.value = record.ftdl;
-                        editor.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-                        executeBtn.disabled = false;
-                        executeBtn.click();
-                        closeHistory();
-                        setStatus(`已載入對話 #${record.no} 的家系圖。`, 'success');
-                    }),
-                    actionButton('提及', () => {
-                        const tag = `#${record.no} `;
-                        const start = input.selectionStart ?? input.value.length;
-                        const end = input.selectionEnd ?? start;
-                        const before = input.value.slice(0, start);
-                        const spacer = before && !/\s$/.test(before) ? ' ' : '';
-                        input.value = before + spacer + tag + input.value.slice(end);
-                        const caret = (before + spacer + tag).length;
-                        closeHistory();
-                        input.focus();
-                        input.setSelectionRange(caret, caret);
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                    }),
-                    actionButton('編輯', () => { editingNo = record.no; renderHistory(); }),
-                    actionButton('刪除', () => {
-                        if (!confirm(`刪除對話 #${record.no}？刪除後無法復原，這個編號也不會再使用。`)) return;
-                        const history = loadHistory();
-                        history.items = history.items.filter(r => r.no !== record.no);
-                        saveHistory(history);
-                        renderHistory();
-                    }, 'danger')
-                );
-                item.appendChild(actions);
-            }
-            historyList.appendChild(item);
-        });
+    function loadFtdl(ftdl, label) {
+        editor.value = ftdl;
+        editor.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        executeBtn.disabled = false;
+        executeBtn.click();
+        setStatus(`已載入${label}的家系圖。`, 'success');
+    }
+    function insertMention(no) {
+        const tag = `#${no} `;
+        const start = input.selectionStart ?? input.value.length;
+        const end = input.selectionEnd ?? start;
+        const before = input.value.slice(0, start);
+        const spacer = before && !/\s$/.test(before) ? ' ' : '';
+        input.value = before + spacer + tag + input.value.slice(end);
+        const caret = (before + spacer + tag).length;
+        input.focus();
+        input.setSelectionRange(caret, caret);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function updateRoom(mutator) {
+        const chat = loadChat();
+        const room = currentRoom(chat);
+        if (!room) return;
+        mutator(room, chat);
+        room.updatedAt = Date.now();
+        saveChat(chat);
+        renderChat();
     }
 
-    historyBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        if (historyPanel.classList.contains('visible')) closeHistory(); else openHistory();
-    });
-    historyPanel.addEventListener('click', e => e.stopPropagation());
-    historyPanel.querySelector('.history-close').addEventListener('click', closeHistory);
-    document.addEventListener('click', () => { if (historyPanel.classList.contains('visible')) closeHistory(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && historyPanel.classList.contains('visible')) closeHistory(); });
-    window.addEventListener('resize', () => { if (historyPanel.classList.contains('visible')) positionHistoryPanel(); });
-    renderHistory();
+    function bubble(role, avatar) {
+        const row = document.createElement('div');
+        row.className = `chat-row ${role}`;
+        if (avatar) {
+            const img = document.createElement('img');
+            img.className = 'chat-avatar';
+            img.src = avatar;
+            img.alt = '';
+            row.appendChild(img);
+        }
+        const b = document.createElement('div');
+        b.className = 'chat-bubble';
+        row.appendChild(b);
+        return { row, b };
+    }
 
-    // --- 主流程 ---
-    async function handleRun() {
-        const question = input.value.trim();
-        if (!question) { input.focus(); return; }
-        if (!getKey()) {
-            const overlay = openSettings('第一次使用請先輸入 Google AI Studio 的 API 金鑰，儲存後會自動送出。');
-            overlay.dataset.resume = 'true';
-            return;
+    function renderItem(it) {
+        const wrap = document.createElement('div');
+        wrap.className = 'chat-item';
+        wrap.dataset.no = it.no;
+
+        const meta = document.createElement('div');
+        meta.className = 'chat-meta';
+        const no = document.createElement('span');
+        no.className = 'chat-no';
+        no.textContent = `#${it.no}`;
+        meta.appendChild(no);
+        const info = document.createElement('span');
+        info.textContent = [formatTime(it.createdAt), it.mode === 'guide' ? '引導' : '生成', it.updatedAt ? '已編輯' : ''].filter(Boolean).join(' · ');
+        meta.appendChild(info);
+        wrap.appendChild(meta);
+
+        if (editingNo === it.no) {
+            const userBox = document.createElement('textarea');
+            userBox.value = it.user;
+            userBox.rows = 3;
+            const replyBox = document.createElement('textarea');
+            replyBox.value = it.ftdl || it.reply || '';
+            replyBox.rows = it.ftdl ? 8 : 5;
+            replyBox.spellcheck = !it.ftdl;
+            if (it.ftdl) replyBox.classList.add('mono');
+            const la = document.createElement('label'); la.textContent = '你的訊息';
+            const lb = document.createElement('label'); lb.textContent = it.ftdl ? 'FTDL（被提及時會帶入這份內容）' : '助手的回覆';
+            wrap.append(la, userBox, lb, replyBox);
+            const actions = document.createElement('div');
+            actions.className = 'chat-actions';
+            actions.append(
+                smallButton('取消', () => { editingNo = null; renderChat(); }),
+                smallButton('儲存', () => {
+                    updateRoom(room => {
+                        const target = room.items.find(x => x.no === it.no);
+                        if (!target) return;
+                        target.user = userBox.value.trim() || target.user;
+                        if (target.ftdl) target.ftdl = replyBox.value.trim() || target.ftdl;
+                        else target.reply = replyBox.value.trim();
+                        target.updatedAt = Date.now();
+                    });
+                    editingNo = null;
+                    renderChat();
+                }, 'primary')
+            );
+            wrap.appendChild(actions);
+            return wrap;
         }
 
-        // 提及的對話：把那一段的描述與 FTDL 依序當作前情，再接上這次的描述
-        const refNos = parseRefs(question);
-        const refs = refNos.map(findHistoryRecord).filter(Boolean);
-        const missing = refNos.filter(no => !refs.some(r => r.no === no));
-        const contents = [];
-        refs.forEach(r => {
-            contents.push({ role: 'user', parts: [{ text: `（對話 #${r.no}）${r.prompt}` }] });
-            contents.push({ role: 'model', parts: [{ text: r.ftdl }] });
-        });
-        const refNote = refs.length
-            ? `\n\n（${refs.map(r => '#' + r.no).join('、')} 是先前的對話與它產生的 FTDL。這次的描述以它們為基礎，請輸出更新後完整的 FTDL。）`
-            : '';
-        contents.push({ role: 'user', parts: [{ text: question + refNote }] });
+        if (it.user) {
+            const { row, b } = bubble('user');
+            b.textContent = it.mode === 'handoff' ? `（交給生成助手）${it.user === HANDOFF_TEXT ? '' : it.user}`.trim() : it.user;
+            wrap.appendChild(row);
+        }
+        if (it.ftdl) {
+            const { row, b } = bubble('assistant', 'assets/cats/cat-4-sm.webp');
+            const title = document.createElement('div');
+            title.className = 'chat-ftdl-title';
+            title.textContent = `產生了家系圖（${countPeople(it.ftdl)} 人）`;
+            b.appendChild(title);
+            const pre = document.createElement('pre');
+            pre.className = 'chat-ftdl';
+            pre.textContent = it.ftdl;
+            pre.hidden = true;
+            const tools = document.createElement('div');
+            tools.className = 'chat-bubble-tools';
+            tools.append(
+                smallButton('載入', () => loadFtdl(it.ftdl, `第 #${it.no} 筆`)),
+                smallButton('查看 FTDL', () => { pre.hidden = !pre.hidden; })
+            );
+            b.append(tools, pre);
+            wrap.appendChild(row);
+        } else if (it.reply) {
+            const { row, b } = bubble('assistant', 'assets/cats/cat-5.webp');
+            b.textContent = it.reply;
+            wrap.appendChild(row);
+        }
 
-        setBusy(true);
-        setStatus(`正在請 ${getModel()} 產生家系圖${refs.length ? `（引用 ${refs.map(r => '#' + r.no).join('、')}）` : ''}…`
-            + (missing.length ? `　找不到 ${missing.map(n => '#' + n).join('、')}，已略過。` : ''));
+        const actions = document.createElement('div');
+        actions.className = 'chat-actions';
+        actions.append(
+            smallButton('提及', () => insertMention(it.no)),
+            smallButton('編輯', () => { editingNo = it.no; renderChat(); }),
+            smallButton('刪除', () => {
+                if (!confirm(`刪除第 #${it.no} 筆對話？刪除後無法復原，這個編號也不會再使用。`)) return;
+                updateRoom(room => { room.items = room.items.filter(x => x.no !== it.no); });
+            }, 'danger')
+        );
+        wrap.appendChild(actions);
+        return wrap;
+    }
+
+    function renderChat() {
+        const chat = loadChat();
+        const room = currentRoom(chat);
+        // 聊天室選單：最近使用的排前面
+        roomSelect.innerHTML = '';
+        const sorted = [...chat.rooms].sort((a, b) => b.updatedAt - a.updatedAt);
+        if (!sorted.length) {
+            const opt = document.createElement('option');
+            opt.textContent = '（還沒有聊天室）';
+            opt.value = '';
+            roomSelect.appendChild(opt);
+        }
+        sorted.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = String(r.id);
+            opt.textContent = `${r.title}（${r.items.length}）`;
+            opt.selected = room && r.id === room.id;
+            roomSelect.appendChild(opt);
+        });
+
+        const count = room ? room.items.length : 0;
+        chatBtn.querySelector('.chat-count').textContent = count ? String(count) : '';
+        drawer.querySelector('.chat-capacity').textContent = room ? `${count}/${ITEM_LIMIT} 筆` : '';
+        drawer.querySelector('.chat-load-latest').disabled = !latestFtdlItem(room);
+        drawer.querySelector('.chat-rename').disabled = !room;
+        drawer.querySelector('.chat-delete-room').disabled = !room;
+
+        // 小提示：已經開始刪除舊對話，或快要到上限
+        if (room && room.trimmedAt) {
+            notice.hidden = false;
+            notice.textContent = `這個聊天室已超過 ${ITEM_LIMIT} 筆，會保留第 1 筆，並從第 2 筆開始刪除較舊的對話。需要完整保留的話，可以開一個新聊天室，用「載入最新家系圖」接著做。`;
+        } else if (room && count >= ITEM_LIMIT - 2) {
+            notice.hidden = false;
+            notice.textContent = `快到 ${ITEM_LIMIT} 筆上限了：之後會保留第 1 筆，並從第 2 筆開始刪除較舊的對話。`;
+        } else {
+            notice.hidden = true;
+        }
+
+        chatBody.innerHTML = '';
+        if (!room || (!room.items.length && !pending)) {
+            const empty = document.createElement('div');
+            empty.className = 'chat-empty';
+            empty.innerHTML = `
+                <img src="assets/cats/cat-5.webp" width="96" height="96" alt="">
+                <div class="chat-empty-title">開始一段新的對話</div>
+                <div>選「<b>引導</b>」，助手會先和你確認目標，再一步步整理家庭故事；</div>
+                <div>選「<b>生成</b>」，直接描述家庭，馬上畫出家系圖。</div>`;
+            chatBody.appendChild(empty);
+        } else {
+            room.items.forEach(it => chatBody.appendChild(renderItem(it)));
+        }
+        if (pending) {
+            const wrap = document.createElement('div');
+            wrap.className = 'chat-item pending';
+            if (pending.user) {
+                const { row, b } = bubble('user');
+                b.textContent = pending.mode === 'handoff' ? '（交給生成助手）' : pending.user;
+                wrap.appendChild(row);
+            }
+            const { row, b } = bubble('assistant', pending.mode === 'guide' ? 'assets/cats/cat-5.webp' : 'assets/cats/cat-4-sm.webp');
+            b.classList.add('typing');
+            b.textContent = pending.text || (pending.mode === 'guide' ? '思考中…' : '正在產生家系圖…');
+            pending.bubbleEl = b;
+            wrap.appendChild(row);
+            chatBody.appendChild(wrap);
+        }
+    }
+
+    chatBtn.addEventListener('click', () => { if (drawer.classList.contains('visible')) closeDrawer(); else { renderChat(); openDrawer(); } });
+    drawer.querySelector('.chat-close').addEventListener('click', closeDrawer);
+    drawer.querySelector('.chat-new').addEventListener('click', () => {
+        const chat = loadChat();
+        createRoom(chat);
+        saveChat(chat);
+        editingNo = null;
+        renderChat();
+        input.focus();
+    });
+    roomSelect.addEventListener('change', () => {
+        const chat = loadChat();
+        const id = parseInt(roomSelect.value, 10);
+        if (!chat.rooms.some(r => r.id === id)) return;
+        chat.currentId = id;
+        saveChat(chat);
+        editingNo = null;
+        renderChat();
+        scrollChatToEnd();
+    });
+    drawer.querySelector('.chat-load-latest').addEventListener('click', () => {
+        const room = currentRoom(loadChat());
+        const latest = latestFtdlItem(room);
+        if (latest) loadFtdl(latest.ftdl, `聊天室「${room.title}」最新（第 #${latest.no} 筆）`);
+    });
+    drawer.querySelector('.chat-rename').addEventListener('click', () => {
+        const room = currentRoom(loadChat());
+        if (!room) return;
+        const name = prompt('聊天室名稱', room.title);
+        if (name && name.trim()) updateRoom(r => { r.title = name.trim().slice(0, 40); });
+    });
+    drawer.querySelector('.chat-delete-room').addEventListener('click', () => {
+        const chat = loadChat();
+        const room = currentRoom(chat);
+        if (!room || !confirm(`刪除聊天室「${room.title}」和裡面的 ${room.items.length} 筆對話？刪除後無法復原。`)) return;
+        chat.rooms = chat.rooms.filter(r => r.id !== room.id);
+        const next = [...chat.rooms].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        chat.currentId = next ? next.id : null;
+        saveChat(chat);
+        renderChat();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.classList.contains('visible') && !document.querySelector('#ai-settings-overlay.visible')) closeDrawer(); });
+    window.addEventListener('resize', () => { if (drawer.classList.contains('visible')) positionDrawer(); });
+    if (dialogue && typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => { if (drawer.classList.contains('visible')) positionDrawer(); }).observe(dialogue);
+    }
+    applyMode(mode);
+    renderChat();
+
+    // --- 主流程 ---
+    function reportError(err) {
+        console.error('Gemini API error:', err);
+        if (err.isTimeout) {
+            setStatus(`等待超過 ${Math.round(TIMEOUT_MS / 1000)} 秒仍沒有回應，請稍後再試，或把描述拆短一點。`, 'error');
+        } else if (err.isNetwork) {
+            setStatus(`無法連上 Google AI Studio（${err.message}），已自動重試 ${NETWORK_RETRIES} 次。請確認網路與 VPN／iCloud 私密轉送，或暫停翻譯等瀏覽器擴充功能後再試；Safari 不穩時可改用 Chrome。`, 'error');
+        } else if (err.status === 400 || err.status === 401 || err.status === 403) {
+            setStatus(`API 金鑰或模型設定有誤：${err.message}`, 'error');
+            openSettings(`呼叫失敗：${err.message}`);
+        } else if (err.status === 404) {
+            setStatus(`找不到模型「${getModel()}」，請到 API 設定更換模型名稱。`, 'error');
+        } else if (err.status === 429) {
+            setStatus('已超過 API 使用額度或請求太頻繁，請稍後再試。', 'error');
+        } else {
+            setStatus(`產生失敗：${err.message}`, 'error');
+        }
+    }
+
+    function trimmedNote(removed) {
+        return removed.length ? `　這個聊天室已超過 ${ITEM_LIMIT} 筆，已刪除較舊的 ${removed.map(n => '#' + n).join('、')}（第 1 筆保留）。` : '';
+    }
+
+    function clearInput() {
+        input.value = '';
+        input.style.height = '';
+    }
+
+    async function runGuide(question) {
+        const chat = loadChat();
+        const room = ensureRoom(chat);
+        saveChat(chat);
+        const contents = buildContents(room, question, 'guide');
+        pending = { user: question, mode: 'guide', text: '' };
+        renderChat();
+        openDrawer();
+        clearInput();
+        setStatus('引導助手正在回覆…');
+        try {
+            const reply = await callGemini(contents, {
+                mode: 'guide',
+                onText: text => {
+                    if (!pending) return;
+                    pending.text = text;
+                    if (pending.bubbleEl) { pending.bubbleEl.textContent = text; scrollChatToEnd(); }
+                }
+            });
+            pending = null;
+            const { item, removed } = addItem({ mode: 'guide', user: question, reply: reply.trim() });
+            setStatus(`引導助手已回覆（第 #${item.no} 筆）。${trimmedNote(removed)}`, removed.length ? 'info' : 'success');
+            scrollChatToEnd();
+        } catch (err) {
+            pending = null;
+            renderChat();
+            if (!input.value) input.value = question; // 失敗時把訊息放回輸入框，方便重送
+            reportError(err);
+        }
+    }
+
+    async function runGenerate(question, { handoff = false } = {}) {
+        const chat = loadChat();
+        const room = ensureRoom(chat);
+        saveChat(chat);
+        const refNos = parseRefs(question);
+        const missing = refNos.filter(no => !room.items.some(it => it.no === no));
+        const contents = buildContents(room, question, 'generate');
+        pending = { user: question, mode: handoff ? 'handoff' : 'generate', text: '' };
+        renderChat();
+        if (drawer.classList.contains('visible')) scrollChatToEnd();
+        setStatus(`正在請 ${getModel()} 產生家系圖${room.items.length ? `（帶入聊天室「${room.title}」的前情）` : ''}…`
+            + (missing.length ? `　這個聊天室找不到 ${missing.map(n => '#' + n).join('、')}，已略過。` : ''));
         try {
             let reply = await callGemini(contents);
             let ftdl = extractFtdl(reply);
@@ -631,8 +1015,15 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                 errors = loadIntoEditor(ftdl);
             }
 
-            const record = ftdl.trim() ? addHistoryRecord(question, ftdl, refs.map(r => r.no)) : null;
-            const savedNote = record ? `（已存為對話 #${record.no}）` : '';
+            pending = null;
+            let savedNote = '', removed = [];
+            if (ftdl.trim()) {
+                const saved = addItem({ mode: handoff ? 'handoff' : 'generate', user: question, ftdl, refs: refNos });
+                removed = saved.removed;
+                savedNote = `（已存到聊天室「${saved.room.title}」第 #${saved.item.no} 筆）${trimmedNote(removed)}`;
+            } else {
+                renderChat();
+            }
 
             if (errors.length > 0 && errors.every(e => e.isolated)) {
                 // 語法正確、只是有人沒接上關係：照樣畫圖，提醒使用者補上
@@ -646,31 +1037,51 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                 executeBtn.disabled = false;
                 executeBtn.click();
                 setStatus(`完成！家系圖已經畫好了，可以開心去喝一杯了 🍻${savedNote}`, 'success');
-                input.value = '';
-                input.style.height = '';
+                if (!handoff) clearInput();
             }
         } catch (err) {
-            console.error('Gemini API error:', err);
-            if (err.isTimeout) {
-                setStatus(`等待超過 ${Math.round(TIMEOUT_MS / 1000)} 秒仍沒有回應，請稍後再試，或把描述拆短一點。`, 'error');
-            } else if (err.isNetwork) {
-                setStatus(`無法連上 Google AI Studio（${err.message}），已自動重試 ${NETWORK_RETRIES} 次。請確認網路與 VPN／iCloud 私密轉送，或暫停翻譯等瀏覽器擴充功能後再試；Safari 不穩時可改用 Chrome。`, 'error');
-            } else if (err.status === 400 || err.status === 401 || err.status === 403) {
-                setStatus(`API 金鑰或模型設定有誤：${err.message}`, 'error');
-                openSettings(`呼叫失敗：${err.message}`);
-            } else if (err.status === 404) {
-                setStatus(`找不到模型「${getModel()}」，請到 API 設定更換模型名稱。`, 'error');
-            } else if (err.status === 429) {
-                setStatus('已超過 API 使用額度或請求太頻繁，請稍後再試。', 'error');
-            } else {
-                setStatus(`產生失敗：${err.message}`, 'error');
-            }
-        } finally {
-            setBusy(false);
+            pending = null;
+            renderChat();
+            reportError(err);
         }
     }
 
-    if (runBtn) runBtn.addEventListener('click', handleRun);
+    async function handleRun({ handoff = false } = {}) {
+        let question = input.value.trim();
+        if (handoff) question = question ? `${HANDOFF_TEXT}\n補充：${question}` : HANDOFF_TEXT;
+        if (!question) { input.focus(); return; }
+        if (!getKey()) {
+            const overlay = openSettings('第一次使用請先輸入 Google AI Studio 的 API 金鑰，儲存後會自動送出。');
+            overlay.dataset.resume = 'true';
+            return;
+        }
+        if (runBtn.disabled) return;
+        setBusy(true);
+        handoffBtn.disabled = true;
+        try {
+            if (handoff) {
+                clearInput();
+                await runGenerate(question, { handoff: true });
+            } else if (mode === 'guide') {
+                await runGuide(question);
+            } else {
+                await runGenerate(question);
+            }
+        } finally {
+            setBusy(false);
+            handoffBtn.disabled = false;
+        }
+    }
+
+    if (runBtn) runBtn.addEventListener('click', () => handleRun());
+    handoffBtn.addEventListener('click', () => {
+        const room = currentRoom(loadChat());
+        if (!room || !room.items.length) {
+            setStatus('這個聊天室還沒有任何對話。先和引導助手聊聊家庭的狀況，再按「產生家系圖」。', 'error');
+            return;
+        }
+        handleRun({ handoff: true });
+    });
     if (input) {
         input.addEventListener('keydown', e => {
             // Enter 換行（預設行為），Shift+Enter 送出

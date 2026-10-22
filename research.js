@@ -1,5 +1,5 @@
 // research.js
-// 研究用家系圖功能：研究配色、身心（wellbeing）色階、婚姻品質線寬、
+// 研究用家系圖功能：研究配色、婚姻品質線寬、
 // 有方向的關係線（bond 區塊）、家庭類型底色、自動圖例與圖片匯出。
 // relationship.js 排版完成後會呼叫 window.FTDLResearch.afterLayout()。
 
@@ -17,9 +17,6 @@
     };
     const INK = '#3B2F27';
     const INK_SOFT = '#6B5B4E';
-
-    // 身心色階：低（灰）→ 高（橘）
-    const WELLBEING_RAMP = [PALETTE.stone, PALETTE.mist, PALETTE.sand, PALETTE.apricot, PALETTE.amber];
 
     const BOND_STYLES = ['solid', 'dashed', 'dotted', 'zigzag', 'cutoff', 'double'];
     const TIE_LINES = ['thick', 'thin', 'dashed'];
@@ -69,17 +66,6 @@
     // 深色模式和畫布底色混合（--ftdl-bg-mix），匯出時又回到淺色
     function familyBackgroundFill(hex) {
         return `color-mix(in srgb, ${backgroundTint(hex)} var(--ftdl-bg-mix), var(--ftdl-canvas-bg))`;
-    }
-
-    function wellbeingColor(value) {
-        const t = parseUnit(value);
-        if (t === null) return null;
-        const pos = t * (WELLBEING_RAMP.length - 1);
-        const i = Math.min(Math.floor(pos), WELLBEING_RAMP.length - 2);
-        const f = pos - i;
-        const a = hexToRgb(WELLBEING_RAMP[i]);
-        const b = hexToRgb(WELLBEING_RAMP[i + 1]);
-        return rgbToHex(a.map((c, k) => c + (b[k] - c) * f));
     }
 
     // --- FTDL 解析（研究擴充部分） ---
@@ -412,10 +398,6 @@
         if (info.genders.has('other')) shapes.push('三角形＝其他');
         if (shapes.length) add(swatchSvg(`<rect x="2" y="2" width="14" height="14" fill="${PALETTE.mist}"/><circle cx="26" cy="9" r="7" fill="${PALETTE.sand}"/>`), shapes.join('、'));
 
-        if (info.wellbeing) {
-            const stops = WELLBEING_RAMP.map((c, i) => `<stop offset="${i / (WELLBEING_RAMP.length - 1)}" stop-color="${c}"/>`).join('');
-            add(swatchSvg(`<defs><linearGradient id="lg-wb" x1="0" x2="1">${stops}</linearGradient></defs><rect x="0" y="3" width="44" height="12" rx="3" fill="url(#lg-wb)"/>`, 44), '節點顏色＝身心（灰低、橘高）');
-        }
         if (info.marriage) add(swatchSvg(`<line x1="2" y1="9" x2="32" y2="9" stroke="${PALETTE.amber}" stroke-width="3"/>`), info.quality ? '橫線＝夫妻，粗細＝婚姻品質' : '橫線＝夫妻');
         if (info.consanguineous) add(swatchSvg(`<line x1="2" y1="6" x2="32" y2="6" stroke="${PALETTE.amber}" stroke-width="2"/><line x1="2" y1="12" x2="32" y2="12" stroke="${PALETTE.amber}" stroke-width="2"/>`), '雙橫線＝血親婚姻');
         if (info.partnership) add(swatchSvg(`<line x1="2" y1="9" x2="32" y2="9" stroke="${PALETTE.amber}" stroke-width="2.5" stroke-dasharray="5 4"/>`), '虛橫線＝伴侶／同居');
@@ -528,7 +510,6 @@
         const flag = cls => persons.some(p => p.el && (p.el.classList.contains(cls) || p.el.querySelector('.' + cls)));
         const info = {
             genders: new Set(persons.map(p => p.el ? (p.el.classList.contains('male') ? 'male' : p.el.classList.contains('female') ? 'female' : 'other') : 'other')),
-            wellbeing: persons.some(p => p.el && p.el.dataset.wellbeing !== undefined),
             marriage: relationships.some(r => r.partners.length > 1 && (r.type || 'marriage') === 'marriage'),
             consanguineous: relationships.some(r => r.consanguineous),
             partnership: relationships.some(r => r.partners.length > 1 && r.type === 'partnership'),
@@ -580,13 +561,6 @@
     const parseIdList = v => (v || '').replace(/[\[\]]/g, '').split(',').map(x => x.trim()).filter(Boolean);
     const birthYear = p => { const m = String(p.birth || '').match(/\d{4}/); return m ? parseInt(m[0], 10) : null; };
     const isTrue = v => String(v).toLowerCase() === 'true';
-
-    function wellbeingWord(v) {
-        const t = parseUnit(v);
-        if (t === null) return null;
-        const word = t >= 0.8 ? '很好' : t >= 0.6 ? '好' : t >= 0.4 ? '普通' : t >= 0.2 ? '差' : '很差';
-        return `${word}（${t}）`;
-    }
 
     // 只列出目前畫面上有顯示的人；依年齡由大到小排序，配偶緊接在一起
     function buildDetailsPanel(wrapper, treeHeight) {
@@ -674,8 +648,6 @@
             if (isTrue(p.chronic)) health.push('慢性病');
             if (isTrue(p.Disability)) health.push('身心障礙');
             if (health.length) lines.push(health.join('、'));
-            const wb = wellbeingWord(p.wellbeing);
-            if (wb) lines.push(`身心狀態：${wb}`);
             if (p.note) lines.push(`備註：${p.note}`);
 
             lines.forEach(text => {
@@ -860,7 +832,7 @@
     document.addEventListener('DOMContentLoaded', addExportButtons);
 
     window.FTDLResearch = {
-        PALETTE, INK, INK_SOFT, WELLBEING_RAMP, BOND_STYLES,
-        resolveColor, lighten, backgroundTint, parseTies, wellbeingColor, parseUnit, parseBonds, afterLayout
+        PALETTE, INK, INK_SOFT, BOND_STYLES,
+        resolveColor, lighten, backgroundTint, parseTies, parseUnit, parseBonds, afterLayout
     };
 })();

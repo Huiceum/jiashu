@@ -85,7 +85,36 @@ document.addEventListener('DOMContentLoaded', () => {
             scalableWrapper.style.transition = isPanning ? 'none' : 'transform 0.3s ease-out';
             scalableWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
         }
+        // 資料卡固定在人物右側：畫布移動或縮放時跟著重新定位（等平移動畫結束再算一次）
+        if (cardState.figure) {
+            positionCard();
+            clearTimeout(cardState.repositionTimer);
+            cardState.repositionTimer = setTimeout(positionCard, 320);
+        }
     }
+
+    // 排版完成後把案主移到畫布可見區域的正中間（聊天室側欄打開時扣掉側欄寬度）
+    function centerOnProband() {
+        if (!scalableWrapper || !familyTreeContainer) return;
+        const proband = scalableWrapper.querySelector('.person-figure.is-proband');
+        const containerRect = familyTreeContainer.getBoundingClientRect();
+        if (!proband || containerRect.width === 0) return;
+        scalableWrapper.style.transition = 'none';
+        scalableWrapper.style.transform = `translate(0px, 0px) scale(${currentScale})`;
+        void scalableWrapper.offsetWidth; // 讓瀏覽器先套用沒有平移的位置，再量人物的位置
+        const r = proband.getBoundingClientRect();
+        const drawer = document.getElementById('chat-drawer');
+        const visibleRight = drawer && drawer.classList.contains('visible')
+            ? Math.min(containerRect.right, drawer.getBoundingClientRect().left)
+            : containerRect.right;
+        panX = (containerRect.left + visibleRight) / 2 - (r.left + r.width / 2);
+        panY = (containerRect.top + containerRect.bottom) / 2 - (r.top + r.height / 2);
+        applyTransform();
+    }
+
+    // 編輯人物後重畫時保留目前的縮放與位置（不重設、不重新置中）
+    let preserveViewOnce = false;
+    window.ftdlPreserveViewOnce = () => { preserveViewOnce = true; };
 
     function updateScale(newScale, zoomCenterX, zoomCenterY) {
         const prevScale = currentScale;
@@ -152,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         isPanning = true;
+        if (!cardState.editing) hideTooltip();
         if (familyTreeContainer) familyTreeContainer.classList.add('is-dragging');
 
         if (event.type === 'touchstart') {
@@ -263,65 +293,232 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     createTooltip();
 
+    // --- 人物資料卡：固定顯示在人物右側；可直接編輯這個人在 FTDL 裡的內容 ---
+    const cardState = { figure: null, person: null, editing: false, hideTimer: null, repositionTimer: null };
+
     function showTooltip(event, personData) {
-        if (isPanning) return; // Don't show tooltip while panning
-        if (!tooltip) return;
+        if (isPanning || !tooltip) return;
+        const figure = event && event.currentTarget;
+        if (cardState.editing) return; // 編輯中不切換到別人
+        clearTimeout(cardState.hideTimer);
+        cardState.figure = figure;
+        cardState.person = personData;
+        renderCardView(personData);
         tooltip.style.display = 'block';
-        updateTooltipContent(personData);
-        updateTooltipPosition(event);
-        // updateTooltipPositionOnMouseMove will be added on mouseenter/touchstart for the figure
+        positionCard();
     }
 
     function hideTooltip() {
         if (!tooltip) return;
+        clearTimeout(cardState.hideTimer);
         tooltip.style.display = 'none';
-        // Event listener for mousemove is removed when mouse leaves the figure
+        tooltip.classList.remove('editing');
+        tooltip.innerHTML = '';
+        cardState.figure = null;
+        cardState.person = null;
+        cardState.editing = false;
     }
-    
-    function updateTooltipPositionOnMouseMove(event) { // This is the event handler itself
-        updateTooltipPosition(event);
+
+    // 滑鼠離開人物或資料卡後稍等一下再關，讓滑鼠能從人物移到資料卡上；編輯中不關
+    function scheduleHide() {
+        if (cardState.editing) return;
+        clearTimeout(cardState.hideTimer);
+        cardState.hideTimer = setTimeout(() => {
+            if (!cardState.editing && !tooltip.matches(':hover')) hideTooltip();
+        }, 160);
     }
+    tooltip.addEventListener('mouseenter', () => clearTimeout(cardState.hideTimer));
+    tooltip.addEventListener('mouseleave', scheduleHide);
+    tooltip.addEventListener('mousedown', e => e.stopPropagation());
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && tooltip.style.display === 'block') hideTooltip();
+    });
+    window.addEventListener('resize', () => { if (cardState.figure) positionCard(); });
 
-    function updateTooltipPosition(event) {
-        if (!tooltip || tooltip.style.display === 'none') return;
-        let x = event.clientX + 10;
-        let y = event.clientY + 10;
-
-        const tooltipRect = tooltip.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        if (x + tooltipRect.width > viewportWidth - 10) {
-            x = event.clientX - tooltipRect.width - 10;
-        }
-        if (y + tooltipRect.height > viewportHeight - 10) {
-            y = event.clientY - tooltipRect.height - 10;
-        }
-        if (x < 5) x = 5;
-        if (y < 5) y = 5;
-
+    function positionCard() {
+        if (!tooltip || !cardState.figure || !cardState.figure.isConnected) return;
+        const r = cardState.figure.getBoundingClientRect();
+        const gap = 12;
+        const w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+        let x = r.right + gap;
+        if (x + w > window.innerWidth - 8) x = Math.max(8, r.left - gap - w); // 右邊放不下就改放左邊
+        let y = r.top;
+        y = Math.max(8, Math.min(y, window.innerHeight - h - 8));
         tooltip.style.left = `${x}px`;
         tooltip.style.top = `${y}px`;
     }
 
-    function updateTooltipContent(personData) {
-        if (!tooltip) return;
-        const genderText = { male: '男', female: '女', other: '其他' }[(personData.gender || '').toLowerCase()] || '未填';
-        const lines = [
-            `${personData.name || '未命名'}（${personData.id || 'N/A'}）`,
-            `性別：${genderText}`,
-            `出生：${personData.birth || '未填'}`
+    const GENDER_TEXT = { male: '男', female: '女', other: '其他／不詳' };
+
+    function renderCardView(personData) {
+        tooltip.classList.remove('editing');
+        tooltip.innerHTML = '';
+        const head = document.createElement('div');
+        head.className = 'card-head';
+        const name = document.createElement('div');
+        name.className = 'card-name';
+        name.textContent = personData.name || '未命名';
+        head.appendChild(name);
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'card-edit-btn';
+        editBtn.textContent = '編輯';
+        editBtn.addEventListener('click', e => { e.stopPropagation(); renderCardEditor(cardState.person); });
+        head.appendChild(editBtn);
+        tooltip.appendChild(head);
+
+        const rows = [
+            ['性別', GENDER_TEXT[(personData.gender || '').toLowerCase()] || '未填'],
+            ['出生', personData.birth || '未填'],
         ];
-        if (personData.death) {
-            lines.push(`死亡：${personData.death === true ? '已過世（日期不詳）' : personData.death}`);
+        if (personData.death) rows.push(['過世', personData.death === true ? '已過世（日期不詳）' : personData.death]);
+        const age = calculateAgeDisplay(personData.birth, personData.death);
+        if (age !== 'N/A') rows.push([personData.death ? '享年' : '年齡', `${age} 歲`]);
+        const tags = [];
+        if (personData.proband) tags.push('案主');
+        if (personData.chronic === true) tags.push('慢性病');
+        if (personData.Disability === true) tags.push('身心障礙');
+        if (tags.length) rows.push(['標記', tags.join('、')]);
+        if (personData.note && personData.note.trim()) rows.push(['備註', personData.note]);
+        rows.push(['ID', personData.id]);
+        const table = document.createElement('dl');
+        table.className = 'card-rows';
+        rows.forEach(([k, v]) => {
+            const dt = document.createElement('dt'); dt.textContent = k;
+            const dd = document.createElement('dd'); dd.textContent = v;
+            table.append(dt, dd);
+        });
+        tooltip.appendChild(table);
+    }
+
+    function renderCardEditor(personData) {
+        cardState.editing = true;
+        clearTimeout(cardState.hideTimer);
+        tooltip.classList.add('editing');
+        tooltip.innerHTML = '';
+        const form = document.createElement('form');
+        form.className = 'card-form';
+        const deathIsDate = personData.death && personData.death !== true;
+        form.innerHTML = `
+            <div class="card-head"><div class="card-name">編輯人物</div><span class="card-id"></span></div>
+            <label>姓名<input name="name" type="text" autocomplete="off"></label>
+            <label>性別<select name="gender"><option value="male">男</option><option value="female">女</option><option value="other">其他／不詳</option></select></label>
+            <label>出生<input name="birth" type="text" placeholder="YYYY 或 YYYY-MM-DD" autocomplete="off"></label>
+            <div class="card-inline">
+                <label class="card-check"><input name="deceased" type="checkbox">已過世</label>
+                <input name="death" type="text" placeholder="過世年份（可空白）" autocomplete="off">
+            </div>
+            <div class="card-checks">
+                <label class="card-check"><input name="proband" type="checkbox">案主</label>
+                <label class="card-check"><input name="chronic" type="checkbox">慢性病</label>
+                <label class="card-check"><input name="Disability" type="checkbox">身心障礙</label>
+            </div>
+            <label>備註<input name="note" type="text" autocomplete="off"></label>
+            <div class="card-error" hidden></div>
+            <div class="card-actions">
+                <button type="button" class="card-cancel">取消</button>
+                <button type="submit" class="card-save">確認</button>
+            </div>`;
+        form.querySelector('.card-id').textContent = personData.id;
+        form.elements.name.value = personData.name || '';
+        form.elements.gender.value = ['male', 'female'].includes((personData.gender || '').toLowerCase()) ? personData.gender.toLowerCase() : 'other';
+        form.elements.birth.value = personData.birth || '';
+        form.elements.deceased.checked = !!personData.death;
+        form.elements.death.value = deathIsDate ? personData.death : '';
+        form.elements.death.disabled = !personData.death;
+        form.elements.proband.checked = !!personData.proband;
+        form.elements.chronic.checked = personData.chronic === true;
+        form.elements.Disability.checked = personData.Disability === true;
+        form.elements.note.value = personData.note || '';
+        form.elements.deceased.addEventListener('change', () => {
+            form.elements.death.disabled = !form.elements.deceased.checked;
+            if (!form.elements.deceased.checked) form.elements.death.value = '';
+        });
+        form.querySelector('.card-cancel').addEventListener('click', () => {
+            cardState.editing = false;
+            renderCardView(cardState.person);
+            positionCard();
+            if (!tooltip.matches(':hover')) scheduleHide();
+        });
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const err = form.querySelector('.card-error');
+            const datePattern = /^\d{4}(-\d{2}(-\d{2})?)?$/;
+            const birth = form.elements.birth.value.trim();
+            const death = form.elements.death.value.trim();
+            const problems = [];
+            if (birth && !datePattern.test(birth)) problems.push('出生日期請寫成 YYYY、YYYY-MM 或 YYYY-MM-DD');
+            if (death && !datePattern.test(death)) problems.push('過世日期請寫成 YYYY、YYYY-MM 或 YYYY-MM-DD');
+            if (problems.length) { err.hidden = false; err.textContent = problems.join('；'); return; }
+            const clean = v => v.replace(/;/g, '，').trim(); // FTDL 的值裡不能有半形分號
+            const changes = {
+                name: clean(form.elements.name.value),
+                gender: form.elements.gender.value,
+                birth,
+                death: form.elements.deceased.checked ? (death || 'true') : '',
+                wellbeing: '', // 已停用的身心分數：編輯時順便從舊資料移除
+                proband: form.elements.proband.checked ? 'true' : '',
+                chronic: form.elements.chronic.checked ? 'true' : '',
+                Disability: form.elements.Disability.checked ? 'true' : '',
+                note: clean(form.elements.note.value)
+            };
+            savePersonEdit(personData.id, changes);
+        });
+        tooltip.appendChild(form);
+        positionCard();
+        form.elements.name.focus();
+    }
+
+    // 把編輯結果寫回編輯器裡的 FTDL，然後重畫目前的視圖
+    const PERSON_KEY_ORDER = ['id', 'name', 'gender', 'birth', 'death', 'proband', 'chronic', 'Disability', 'fill', 'note'];
+    function rewritePersonBlock(block, changes) {
+        const open = block.indexOf('{'), close = block.lastIndexOf('}');
+        const body = block.slice(open + 1, close);
+        const props = [];
+        const re = /([\w?]+)\s*:\s*([^;]*?)\s*;/g;
+        let m;
+        while ((m = re.exec(body)) !== null) props.push([m[1].replace('?', ''), m[2]]);
+        Object.entries(changes).forEach(([key, value]) => {
+            const idx = props.findIndex(([k]) => k === key);
+            if (value === '' || value === null || value === undefined) { if (idx >= 0) props.splice(idx, 1); return; }
+            if (idx >= 0) props[idx][1] = value;
+            else {
+                // 新增的欄位依慣用順序插入
+                const order = PERSON_KEY_ORDER.indexOf(key);
+                const after = props.reduce((pos, [k], i) => (PERSON_KEY_ORDER.indexOf(k) !== -1 && PERSON_KEY_ORDER.indexOf(k) < order ? i + 1 : pos), 0);
+                props.splice(after, 0, [key, value]);
+            }
+        });
+        if (/\n/.test(body)) {
+            const indent = (body.match(/\n([ \t]+)\S/) || [])[1] || '  ';
+            return `person {\n${props.map(([k, v]) => `${indent}${k}: ${v};`).join('\n')}\n}`;
         }
-        lines.push(`年齡：${calculateAgeDisplay(personData.birth, personData.death)}`);
-        if (personData.wellbeing !== undefined && personData.wellbeing !== '') lines.push(`身心：${personData.wellbeing}`);
-        if (personData.proband) lines.push('先證者');
-        if (personData.chronic === true) lines.push('慢性病');
-        if (personData.Disability === true) lines.push('身心障礙');
-        if (personData.note && personData.note.trim()) lines.push(`備註：${personData.note}`);
-        tooltip.textContent = lines.join('\n');
+        return `person { ${props.map(([k, v]) => `${k}: ${v};`).join(' ')} }`;
+    }
+
+    function savePersonEdit(id, changes) {
+        const editor = document.getElementById('ftdl-editor');
+        if (!editor) return;
+        const blockRe = /(^|[\s;}])(person\s*\{[\s\S]*?\})/g;
+        let found = false;
+        const updated = editor.value.replace(blockRe, (whole, lead, block) => {
+            const idMatch = block.match(/\bid\s*:\s*([^;\s]+)\s*;/);
+            const blockId = idMatch && idMatch[1];
+            if (blockId === id) { found = true; return lead + rewritePersonBlock(block, changes); }
+            // 案主通常只有一位：把別人設成案主時，取消其他人的案主
+            if (changes.proband === 'true' && /\bproband\s*:\s*true\s*;/.test(block)) return lead + rewritePersonBlock(block, { proband: '' });
+            return whole;
+        });
+        if (!found) {
+            const err = tooltip.querySelector('.card-error');
+            if (err) { err.hidden = false; err.textContent = `在編輯器裡找不到 id 為 ${id} 的人物，無法儲存。`; }
+            return;
+        }
+        editor.value = updated;
+        editor.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        try { sessionStorage.setItem('lastFTDLCode', updated); } catch (e) { /* 忽略 */ }
+        hideTooltip();
+        if (typeof window.ftdlRerenderCurrent === 'function') window.ftdlRerenderCurrent();
     }
 
     function parsePersonsFromFTDL(ftdlText) {
@@ -514,12 +711,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (personData.proband === true) figure.classList.add('is-proband');
 
-        // 研究擴充：fill 指定顏色，否則依 wellbeing（0–1）套用身心色階
+        // 研究擴充：fill 直接指定節點顏色
         const research = window.FTDLResearch;
         if (research) {
-            const wb = research.parseUnit(personData.wellbeing);
-            if (wb !== null) figure.dataset.wellbeing = String(wb);
-            const fill = research.resolveColor(personData.fill) || (wb !== null ? research.wellbeingColor(wb) : null);
+            const fill = research.resolveColor(personData.fill);
             if (fill) {
                 figure.style.setProperty('--node-fill', fill);
                 figure.classList.add('has-node-fill');
@@ -581,14 +776,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- END MODIFICATION ---
 
 
-        figure.addEventListener('mouseenter', (event) => {
-            showTooltip(event, personData);
-            document.addEventListener('mousemove', updateTooltipPositionOnMouseMove);
-        });
-        figure.addEventListener('mouseleave', () => {
-            hideTooltip();
-            document.removeEventListener('mousemove', updateTooltipPositionOnMouseMove);
-        });
+        figure.addEventListener('mouseenter', (event) => showTooltip(event, personData));
+        figure.addEventListener('mouseleave', scheduleHide);
         figure.addEventListener('mousedown', (e) => e.stopPropagation()); // Prevent canvas pan when clicking figure
         figure.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false }); // Prevent canvas pan
 
@@ -604,7 +793,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         scalableWrapper.innerHTML = ''; // Clear previous tree
-        resetView(); // Reset pan and zoom
+        if (!cardState.editing) hideTooltip();
+        if (!preserveViewOnce) resetView(); // Reset pan and zoom
 
         if (!ftdlText || !ftdlText.trim()) {
             console.log("FTDL text is empty or whitespace. Displaying message.");
@@ -651,6 +841,12 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn("Relationship rendering function (window.triggerRelationshipRender) not found. Relationship lines will not be drawn.");
         }
         switchToCanvasView();
+        if (preserveViewOnce) {
+            preserveViewOnce = false;
+            applyTransform();
+        } else {
+            requestAnimationFrame(centerOnProband);
+        }
     }
 
     function clearFamilyTree() {
@@ -661,7 +857,8 @@ document.addEventListener('DOMContentLoaded', () => {
          }
 
         scalableWrapper.innerHTML = '';
-        resetView();
+        if (!preserveViewOnce) resetView();
+        hideTooltip();
 
         const p = document.createElement('p');
         p.id = 'initial-canvas-message';

@@ -14,7 +14,6 @@
 
 | 想呈現的資訊 | FTDL 寫法 | 畫面上的呈現 |
 |---|---|---|
-| 個人身心狀態 | `person { wellbeing: 0–1; }` | 節點顏色從灰（低）漸變到橘（高） |
 | 婚姻品質 | `relationship { quality: 0–1; }` | 夫妻橫線越粗表示品質越好 |
 | 同居 | `relationship { status: cohabiting; }` | 狀態記錄在關係中 |
 | 感情的方向與深厚（任何兩人） | `bond { from: A; to: B; closeness: 0–1; }` | 由 A 指向 B 的弧形箭頭：箭頭＝感情的方向，粗細＝感情的深厚；所有感情線同一色，不以顏色區分身分 |
@@ -58,10 +57,10 @@ metadata {
     date: 2018;
 }
 
-person { id: father_a; name: 父 A; gender: male; birth: 1962; wellbeing: 0.35; }
+person { id: father_a; name: 父 A; gender: male; birth: 1962; }
 person { id: mother_a; name: 母 A; gender: female; birth: 1965; }
-person { id: child_a1; name: 子 A1; gender: female; birth: 1994; wellbeing: 0.1; proband: true; }
-person { id: child_a2; name: 子 A2; gender: male; birth: 1997; wellbeing: 0.6; chronic: true; }
+person { id: child_a1; name: 子 A1; gender: female; birth: 1994; proband: true; }
+person { id: child_a2; name: 子 A2; gender: male; birth: 1997; chronic: true; }
 
 relationship {
     partners: [father_a, mother_a];

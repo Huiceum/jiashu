@@ -6,7 +6,7 @@
 
 除了一般家系圖，也支援研究需要的資訊，例如：
 
-- 個人的身心狀態
+- 慢性病、身心障礙
 - 婚姻品質
 - 有方向的感情線（任何兩人之間，箭頭＝方向、粗細＝深厚）
 - 衝突、疏遠、斷絕往來等關係性質
@@ -34,7 +34,7 @@
                                          ▼
                解析 → 樹系辨識 → 世代計算 → 排版 → 繪製人物與線條
                                          ▼
-                       研究層：身心色階、婚姻品質、親密箭頭、關係標記、家庭類型底色、圖例
+                       研究層：婚姻品質、親密箭頭、關係標記、家庭類型底色、圖例
                                          ▼
                                     匯出 PNG／SVG
 ```
@@ -44,7 +44,7 @@
 | 區塊 | 用途 | 主要屬性 |
 |---|---|---|
 | `metadata` | 整張圖的資訊 | `title` `author` `date` `color` `family_type` `background` `legend` |
-| `person` | 一個人 | `id` `name` `gender` `birth` `death` `proband` `chronic` `Disability` `wellbeing` `fill` `note` |
+| `person` | 一個人 | `id` `name` `gender` `birth` `death` `proband` `chronic` `Disability` `fill` `note` |
 | `relationship` | 伴侶關係與子女 | `partners` `type` `status` `start_date` `end_date` `quality` `children` |
 | `bond` | 有方向的關係線 | `from` `to` `closeness` `style` `color` `arrow` `label` |
 | `tie` | 關係強弱標記（單向弧線＋文字） | `from` `to` `line`（thick／thin／dashed） `label` `color` |
@@ -61,7 +61,7 @@
 | `grammar.js` | FTDL 語法規則、即時驗證、自動補全 |
 | `person.js` | 人物符號、縮放與拖曳、提示框 |
 | `relationship.js` | 世代計算、排版、婚姻與親子線 |
-| `research.js` | 研究層：色盤、身心色階、`bond` 箭頭、`tie` 關係標記、標籤避讓、家庭類型底色、圖例、匯出 |
+| `research.js` | 研究層：色盤、`bond` 箭頭、`tie` 關係標記、標籤避讓、家庭類型底色、圖例、匯出 |
 | `treeSelector.js` | 辨識並切換多棵不相連的家族樹 |
 | `metadata.js` | 標題區與灰階模式 |
 | `theme.css` | 研究配色主題（最後載入，覆蓋其他樣式） |

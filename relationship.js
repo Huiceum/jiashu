@@ -173,6 +173,12 @@ document.addEventListener('DOMContentLoaded', () => {
              person.layoutData = { subtreeWidth: 0, totalFamilyUnitsBlockWidth: 0, familyUnits: [], maxMarriageYOffsetInGen: 0, maxX: undefined };
          });
 
+        const structureWarnings = [];
+        const personName = id => {
+            const el = personsMap[id] && personsMap[id].el;
+            const nameEl = el && el.querySelector('.person-name');
+            return nameEl ? nameEl.textContent : id;
+        };
         relationships.forEach(rel => {
             const validPartners = rel.partners.filter(pId => personsMap[pId]);
              if (validPartners.length > 0) {
@@ -182,12 +188,33 @@ document.addEventListener('DOMContentLoaded', () => {
                  return;
              }
 
-            const validChildren = (rel.children || []).filter(cId => personsMap[cId]);
-            rel.children = validChildren;
-            validChildren.forEach(cId => {
+            // 排除會形成循環的親子關係（例如某人同時是這段關係的伴侶與孩子，或孩子其實是父母的祖先），
+            // 否則排版會無限遞迴、整張圖畫不出來；被略過的關係會在畫面上提醒
+            const isAncestorOrSelf = (candidateId, personId, seen = new Set()) => {
+                if (candidateId === personId) return true;
+                if (seen.has(personId)) return false;
+                seen.add(personId);
+                const parentsRel = personsMap[personId] && personsMap[personId].parentsRelationship;
+                return !!parentsRel && parentsRel.partners.some(pid => isAncestorOrSelf(candidateId, pid, seen));
+            };
+            const validChildren = [];
+            (rel.children || []).filter(cId => personsMap[cId]).forEach(cId => {
+                if (rel.partners.some(pid => isAncestorOrSelf(cId, pid))) {
+                    structureWarnings.push(`${personName(cId)} 被寫成自己（或自己祖先）的孩子，已略過這段親子關係`);
+                    return;
+                }
+                if (personsMap[cId].parentsRelationship) {
+                    structureWarnings.push(`${personName(cId)} 有兩對父母，只保留第一對`);
+                    return;
+                }
+                validChildren.push(cId);
                 personsMap[cId].parentsRelationship = rel;
             });
+            rel.children = validChildren;
         });
+        if (structureWarnings.length) {
+            document.dispatchEvent(new CustomEvent('ftdl-structure-warning', { detail: structureWarnings }));
+        }
 
         // 雙方都有父母在圖中的婚姻（例如表兄妹結婚）改用例外畫法：
         // 夫妻各自留在原生家庭底下，婚姻線從兩人之間拉過去，子女排在兩人中間下方。
@@ -518,6 +545,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function calculateNodeWidths(person, personsMap) {
         if (!person) return;
         if (person.layoutData.totalFamilyUnitsBlockWidth > 0 || (person.layoutData.familyUnits && person.layoutData.familyUnits.length > 0)) return;
+        // 保險：資料若仍有循環，避免無限遞迴
+        if (person.layoutData.computingWidth) return;
+        person.layoutData.computingWidth = true;
+        try { computeNodeWidths(person, personsMap); } finally { person.layoutData.computingWidth = false; }
+    }
+
+    function computeNodeWidths(person, personsMap) {
 
         person.layoutData.subtreeWidth = person.width;
         person.layoutData.totalFamilyUnitsBlockWidth = 0;

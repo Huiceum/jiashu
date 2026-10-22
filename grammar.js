@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     chronic: { optional: true, max: 1, type: 'boolean' },
                      // 新增 person.Disability 屬性
                     Disability: { optional: true, max: 1, type: 'boolean' },
-                    // 研究擴充：身心分數（0–1）與指定填色
+                    // 身心分數（wellbeing）功能已移除；仍接受這個屬性但不會有任何效果，避免舊資料報錯
                     wellbeing: { optional: true, max: 1, type: 'unit' },
                     fill: { optional: true, max: 1, type: 'color' },
                     note: { optional: true, type: 'string_multiline' }
@@ -116,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 更新 person 建議
                 "chronic?: true|false;",
                 "Disability?: true|false;",
-                "wellbeing?: 0–1;",
                 "fill?: sand|mist|apricot|amber|clay|stone|#RRGGBB;",
                 "note: 標示;"
             ],

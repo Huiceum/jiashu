@@ -39,6 +39,7 @@ const globalClearFunction = window.clearFamilyTree || function() {
     let identifiedTrees = [];
     let currentOptions = [];
     let originalFullCode = "";
+    let currentSelectedName = null; // 目前顯示的視圖名稱：重新執行後若還有同名視圖就選回它
 
     // --- UI Element References ---
     let selectorPanel = null;
@@ -386,6 +387,8 @@ const globalClearFunction = window.clearFamilyTree || function() {
             partners: (rel.data.partners || []).filter(id => personMap[id]),
             children: (rel.data.children || []).filter(id => personMap[id])
         })).filter(rel => rel.partners.length > 0);
+        // 同一個人不能同時是這段關係的伴侶與孩子（資料錯誤，會形成循環），略過這種親子關係
+        rels.forEach(rel => { rel.children = rel.children.filter(id => !rel.partners.includes(id)); });
         rels.forEach(rel => {
             rel.partners.forEach(id => personMap[id].rels.push(rel));
             rel.children.forEach(id => personMap[id].parentRels.push(rel));
@@ -551,6 +554,7 @@ const globalClearFunction = window.clearFamilyTree || function() {
 var handleOptionSelection = function(optionIndex, selectedListItem) { // var for hoisting
     if (optionIndex < 0 || optionIndex >= currentOptions.length) return;
     const selectedOption = currentOptions[optionIndex];
+    currentSelectedName = selectedOption.name;
     console.log(`Selected: ${selectedOption.name}`);
     console.log(`Rendering FTDL for ${selectedOption.name}:\n${selectedOption.ftdlCode}`); // Log FTDL to verify subtitle
 
@@ -631,14 +635,37 @@ function executeAndSelectTree() {
     populateSelectorList();
     switchToCanvasView();
         if (currentOptions.length > 0) {
-            // 預設畫第一個視圖：能一次畫完時是「完整家系」，否則是含案主、代數最多的直系視圖
+            // 預設畫第一個視圖：能一次畫完時是「完整家系」，否則是含案主、代數最多的直系視圖；
+            // 重新執行時若還有同名的視圖，就留在那個視圖
             if (currentOptions.length > 1) showSelectorPanel(); else hideSelectorPanel();
+            const sameIndex = currentOptions.findIndex(o => o.name === currentSelectedName);
+            const index = sameIndex >= 0 ? sameIndex : 0;
             setTimeout(() => {
-                const firstItem = selectorList ? selectorList.querySelector('li[data-option-index="0"]') : null;
-                handleOptionSelection(0, firstItem);
+                const item = selectorList ? selectorList.querySelector(`li[data-option-index="${index}"]`) : null;
+                handleOptionSelection(index, item);
             }, 50);
         } else { hideSelectorPanel(); globalClearFunction(); }
     }
+
+    // 從畫布上編輯人物後使用：重新解析編輯器內容，留在目前的視圖並保留縮放與位置，不彈出選擇面板
+    window.ftdlRerenderCurrent = function () {
+        if (!ftdlEditor) return;
+        originalFullCode = ftdlEditor.value;
+        try { sessionStorage.setItem('lastFTDLCode', originalFullCode); } catch (e) { /* 忽略 */ }
+        parsePersonsAndRelationships(originalFullCode);
+        identifyAndFilterTrees();
+        if (!panelCreated) createSelectorPanelAndButton();
+        populateSelectorList();
+        if (!currentOptions.length) { globalClearFunction(); return; }
+        const sameIndex = currentOptions.findIndex(o => o.name === currentSelectedName);
+        const index = sameIndex >= 0 ? sameIndex : 0;
+        if (typeof window.ftdlPreserveViewOnce === 'function') window.ftdlPreserveViewOnce();
+        const item = selectorList ? selectorList.querySelector(`li[data-option-index="${index}"]`) : null;
+        handleOptionSelection(index, item);
+        if (toggleButton && !(selectorPanel && selectorPanel.classList.contains('visible'))) {
+            toggleButton.style.display = currentOptions.length > 0 ? 'block' : 'none';
+        }
+    };
 
     if (executeBtn && ftdlEditor && familyTreeContainer && viewContainer) {
         executeBtn.addEventListener('click', executeAndSelectTree);

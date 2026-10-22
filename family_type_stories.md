@@ -4,7 +4,7 @@
 
 - **來源**：故事原文在研究資料夾的 `submission/四個家庭故事.md`，每個故事都從該群的代表家戶生成，代表家戶的選法也寫在那份檔案裡。
 - **人物**：姓名為虛構；性別、年齡、教育、工作、同住與親疏方向來自代表家戶。
-- **數值**：FTDL 中的 `wellbeing`、`quality`、`closeness` 由代表家戶的標準化分數換算（0.5 + 0.3 × z）。另一位家長在資料中沒有身心分數，所以不填。
+- **數值**：FTDL 中的 `quality`、`closeness` 由代表家戶的標準化分數換算（0.5 + 0.3 × z）。
 
 使用方式：
 
@@ -38,9 +38,9 @@ metadata {
 }
 
 person { id: guoxiong; name: 林國雄; gender: male; birth: 1963; note: 國中畢業; }
-person { id: xiuqin; name: 陳秀琴; gender: female; birth: 1967; wellbeing: 0.64; note: 家庭主婦; }
-person { id: jianhong; name: 林建宏; gender: male; birth: 1989; wellbeing: 0.57; note: 上班族，同住; }
-person { id: juju; name: 橘橘; gender: female; birth: 1990; wellbeing: 0.48; proband: true; note: 林佳穎，準備轉職，同住; }
+person { id: xiuqin; name: 陳秀琴; gender: female; birth: 1967; note: 家庭主婦; }
+person { id: jianhong; name: 林建宏; gender: male; birth: 1989; note: 上班族，同住; }
+person { id: juju; name: 橘橘; gender: female; birth: 1990; proband: true; note: 林佳穎，準備轉職，同住; }
 
 relationship {
     partners: [guoxiong, xiuqin];
@@ -84,10 +84,10 @@ metadata {
     date: 2018;
 }
 
-person { id: yating; name: 黃雅婷; gender: female; birth: 1977; wellbeing: 0.61; note: 家庭主婦; }
+person { id: yating; name: 黃雅婷; gender: female; birth: 1977; note: 家庭主婦; }
 person { id: zhiming; name: 吳志明; gender: male; birth: 1979; note: 上班族; }
-person { id: zihao; name: 吳子豪; gender: male; birth: 1994; wellbeing: 0.81; note: 剛畢業找工作，半小時車程; }
-person { id: xiaohu; name: 小虎; gender: female; birth: 1997; wellbeing: 0.4; proband: true; note: 吳詩涵，大學生，一到兩小時車程; }
+person { id: zihao; name: 吳子豪; gender: male; birth: 1994; note: 剛畢業找工作，半小時車程; }
+person { id: xiaohu; name: 小虎; gender: female; birth: 1997; proband: true; note: 吳詩涵，大學生，一到兩小時車程; }
 person { id: youngest; name: 老么; gender: male; birth: 2005; note: 國中，同住; }
 
 relationship {
@@ -133,10 +133,10 @@ metadata {
     date: 2020;
 }
 
-person { id: wende; name: 張文德; gender: male; birth: 1953; wellbeing: 0.75; note: 已退休; }
+person { id: wende; name: 張文德; gender: male; birth: 1953; note: 已退休; }
 person { id: yulan; name: 李玉蘭; gender: female; birth: 1956; }
-person { id: mianmian; name: 棉棉; gender: female; birth: 1988; wellbeing: 0.66; proband: true; note: 張雅雯，研究員，外縣市; }
-person { id: jiahao; name: 張家豪; gender: male; birth: 1991; wellbeing: 0.73; note: 上班族，同住; }
+person { id: mianmian; name: 棉棉; gender: female; birth: 1988; proband: true; note: 張雅雯，研究員，外縣市; }
+person { id: jiahao; name: 張家豪; gender: male; birth: 1991; note: 上班族，同住; }
 
 relationship {
     partners: [wende, yulan];
@@ -180,10 +180,10 @@ metadata {
     date: 2022;
 }
 
-person { id: zhenfu; name: 王振福; gender: male; birth: 1968; wellbeing: 0.25; note: 工廠上班; }
+person { id: zhenfu; name: 王振福; gender: male; birth: 1968; note: 工廠上班; }
 person { id: meiling; name: 蔡美玲; gender: female; birth: 1969; }
-person { id: momo; name: 墨墨; gender: female; birth: 1995; wellbeing: 0.05; proband: true; note: 王怡君，上班族，同住; }
-person { id: bohan; name: 王柏翰; gender: male; birth: 1997; wellbeing: 0.59; note: 剛開始上班，同住; }
+person { id: momo; name: 墨墨; gender: female; birth: 1995; proband: true; note: 王怡君，上班族，同住; }
+person { id: bohan; name: 王柏翰; gender: male; birth: 1997; note: 剛開始上班，同住; }
 
 relationship {
     partners: [zhenfu, meiling];
