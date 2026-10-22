@@ -336,7 +336,6 @@ body.dark-mode .ai-dialog select { background: #1E1915; color: #EFE6DA; }
 body.dark-mode .person-figure:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
 
 /* ===== 插圖與品牌 ===== */
-.app-logo { width: 32px; height: 32px; margin-right: 10px; flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25)); }
 
 /* 空白畫布：置中的貓與說明（不隨畫布縮放、拖曳） */
 #family-tree-scalable-wrapper > p#initial-canvas-message,
@@ -391,7 +390,9 @@ body.dark-mode .person-figure:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
     border-radius: 50%;
     background: var(--rs-sand) no-repeat center / 24px 24px;
 }
-#ai-status.ai-status-info::before { background-image: url('assets/cats/cat-3.webp'); animation: cat-bob 1.2s ease-in-out infinite; }
+#ai-status.ai-status-info::before { background-image: url('assets/cats/cat-3.webp'); }
+/* 生成家系圖時：狀態列也換成同一隻會動的貓（引導助手回覆時不動） */
+body.ai-generating #ai-status.ai-status-info::before { background-image: url('assets/cats/cat-1-run.webp'); background-size: 26px 26px; }
 #ai-status.ai-status-success::before { background-image: url('assets/cats/cat-13.webp'); }
 #ai-status.ai-status-error::before { background-image: url('assets/cats/cat-10.webp'); }
 
@@ -411,6 +412,7 @@ body.dark-mode .person-figure:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
 @media (prefers-reduced-motion: reduce) {
     #canvas-empty-state img,
     #ai-status.ai-status-info::before { animation: none; }
+    body.ai-generating #ai-status.ai-status-info::before { background-image: url('assets/cats/cat-3.webp'); }
 }
 
 /* 分頁按鈕的小貓圖示 */
@@ -479,3 +481,6 @@ body.dark-mode #person-tooltip .card-error { color: #F2A48C; }
 #person-tooltip .card-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 2px; }
 #person-tooltip .card-actions button { padding: 4px 14px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--background-color); color: var(--text-color-primary); }
 #person-tooltip .card-actions .card-save { background: var(--primary-color); border-color: var(--primary-color); color: var(--text-color-on-primary); }
+
+/* 縮放與匯出按鈕移到畫布右下角，左下角留給助手貓 */
+#canvas-zoom-controls { left: auto; right: 10px; }

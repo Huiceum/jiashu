@@ -28,7 +28,6 @@
     <div id="main-app-content">
         <header id="app-header">
             <div class="header-left">
-                <img class="app-logo" src="assets/icons/favicon-64.png" width="32" height="32" alt="家書 Jiashu">
                 <span class="app-title">家書 Jiashu｜用一段話畫出一個家</span>
             </div>
 
@@ -78,15 +77,55 @@
             </div>
         </main>
 
-        <div id="dialogue-container">
-            <textarea id="user-text-input" placeholder="用一般文字描述家庭或研究情境，例如：父親 1968 年生、與母親婚姻品質良好……（Enter 換行，Shift+Enter 送出）" rows="1"></textarea>
-            <button id="run-dialogue-btn">執行</button>
-        </div>
-        
-
-        
-        
+        <!-- 助手對話區：點左下角的貓從下方拉出，左側可以展開聊天室清單 -->
+        <section id="assistant-sheet" aria-label="助手對話">
+            <div class="sheet-resizer" title="拖曳調整高度" aria-hidden="true"></div>
+            <div class="sheet-inner">
+                <aside class="sheet-rooms" aria-label="聊天室清單">
+                    <div class="rooms-head">
+                        <span class="rooms-title">聊天室</span>
+                        <button type="button" class="rooms-new" title="開一個新的聊天室">＋ 新聊天室</button>
+                    </div>
+                    <ul class="rooms-list"></ul>
+                    <div class="rooms-foot">最多 10 個聊天室，每個最多 20 筆對話</div>
+                </aside>
+                <div class="sheet-main">
+                    <header class="sheet-head">
+                        <button type="button" class="rooms-toggle" title="顯示／隱藏聊天室清單" aria-label="聊天室清單">☰</button>
+                        <div class="sheet-title"></div>
+                        <span class="chat-capacity"></span>
+                        <button type="button" class="chat-load-latest" title="把這個聊天室最新的一份 FTDL 載入並畫出來">載入最新家系圖</button>
+                        <button type="button" class="sheet-close" title="收起對話區" aria-label="收起對話區">⌄</button>
+                    </header>
+                    <div class="chat-notice" hidden></div>
+                    <div class="chat-body"></div>
+                    <div class="sheet-composer">
+                        <div class="composer-mascot-slot"></div>
+                        <div class="composer-column">
+                            <div id="ai-status"></div>
+                            <div class="composer-box">
+                                <textarea id="user-text-input" rows="1"></textarea>
+                                <div class="composer-row">
+                                    <div id="ai-mode-toggle" role="group" aria-label="助手模式">
+                                        <button type="button" data-mode="generate" title="直接把描述轉成家系圖">生成</button>
+                                        <button type="button" data-mode="guide" title="由引導助手陪你一步步整理家庭故事">引導</button>
+                                    </div>
+                                    <span class="composer-hint">Enter 換行 · Shift+Enter 送出 · #編號 可提及</span>
+                                    <button type="button" id="ai-handoff-btn" title="把這個聊天室目前的所有資訊交給生成助手，畫出家系圖">產生家系圖</button>
+                                    <button type="button" id="run-dialogue-btn">送出</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
+    <!-- 左下角的助手貓：點一下展開／收起對話區；等待回覆時會播放動畫 -->
+    <button type="button" id="assistant-mascot" title="和助手對話" aria-label="和助手對話" aria-expanded="false">
+        <img src="assets/cats/cat-1.webp" width="72" height="72" alt="">
+    </button>
+    <div id="assistant-bubble" role="status" aria-live="polite"></div>
     <script src="config.js"></script>
     <script src="base.js"></script>
     <script src="grammar.js"></script>

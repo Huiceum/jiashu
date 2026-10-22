@@ -1,11 +1,7 @@
 /* ai.css：Google AI Studio 設定視窗與狀態列 */
 
-#dialogue-container { flex-wrap: wrap; }
-
 #ai-status {
     display: none;
-    order: -1;
-    flex-basis: 100%;
     margin-bottom: 8px;
     padding: 6px 12px;
     border-radius: var(--border-radius-medium);
@@ -83,127 +79,6 @@
 .ai-btn-secondary:hover { background: var(--surface-color-hover); }
 #ai-key-clear { margin-right: auto; }
 
-/* --- 輸入列：聊天室按鈕、模式切換、交給生成助手 --- */
-#ai-chat-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    height: var(--dialogue-button-height);
-    margin-right: 8px;
-    padding: 0 10px;
-    background: var(--background-color);
-    color: var(--text-color-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-medium);
-    font-size: 0.9em;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-#ai-chat-btn:hover,
-#ai-chat-btn.active { background: var(--surface-color-hover); color: var(--text-color-primary); }
-#ai-chat-btn img { width: 22px; height: 22px; }
-#ai-chat-btn .chat-count:not(:empty) {
-    min-width: 18px;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: var(--rs-amber);
-    color: #FFFFFF;
-    font-size: 0.75em;
-    line-height: 18px;
-    text-align: center;
-}
-
-#ai-mode-toggle {
-    display: inline-flex;
-    flex-shrink: 0;
-    height: var(--dialogue-button-height);
-    margin-right: 10px;
-    padding: 3px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-medium);
-    background: var(--background-color);
-}
-#ai-mode-toggle button {
-    border: none;
-    background: transparent;
-    color: var(--text-color-secondary);
-    padding: 0 12px;
-    border-radius: calc(var(--border-radius-medium) - 2px);
-    font-size: 0.88em;
-    white-space: nowrap;
-}
-#ai-mode-toggle button:hover { color: var(--text-color-primary); }
-#ai-mode-toggle button.active { background: var(--rs-amber); color: #FFFFFF; font-weight: 600; }
-
-#ai-handoff-btn {
-    height: var(--dialogue-button-height);
-    margin-right: 8px;
-    padding: 0 12px;
-    background: var(--primary-color-pale);
-    color: var(--text-color-primary);
-    border: 1px solid var(--rs-amber);
-    border-radius: var(--border-radius-medium);
-    font-size: 0.9em;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-#ai-handoff-btn:hover { background: var(--rs-apricot); color: #3B2F27; }
-#ai-handoff-btn:disabled { opacity: 0.6; cursor: progress; }
-
-/* --- 聊天室側欄 --- */
-#chat-drawer {
-    position: fixed;
-    right: 0;
-    z-index: 1400;
-    width: min(420px, 100vw);
-    display: none;
-    flex-direction: column;
-    background: var(--background-color);
-    color: var(--text-color-primary);
-    border-left: 1px solid var(--border-color);
-    box-shadow: -6px 0 20px rgba(0, 0, 0, 0.08);
-}
-#chat-drawer.visible { display: flex; }
-.chat-head { padding: 10px 12px 8px; border-bottom: 1px solid var(--border-color-light); display: flex; flex-direction: column; gap: 8px; }
-.chat-head-row { display: flex; align-items: center; gap: 6px; }
-.chat-room-select {
-    flex: 1;
-    min-width: 0;
-    height: 32px;
-    padding: 0 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--background-color);
-    color: var(--text-color-primary);
-    font-family: inherit;
-}
-.chat-new, .chat-tools button {
-    height: 30px;
-    padding: 0 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--background-color);
-    color: var(--text-color-primary);
-    font-size: 0.82em;
-    white-space: nowrap;
-}
-.chat-new:hover, .chat-tools button:hover:not(:disabled) { background: var(--surface-color-hover); }
-.chat-tools button:disabled { opacity: 0.45; cursor: default; }
-.chat-load-latest { border-color: var(--rs-amber) !important; }
-.chat-delete-room { color: #A0442A !important; }
-body.dark-mode .chat-delete-room { color: #F2A48C !important; }
-.chat-capacity { margin-left: auto; font-size: 0.78em; color: var(--text-color-secondary); white-space: nowrap; }
-.chat-close { background: transparent; border: none; font-size: 1.4em; line-height: 1; padding: 2px 6px; color: var(--text-color-secondary); }
-.chat-close:hover { color: var(--text-color-primary); }
-.chat-notice {
-    font-size: 0.8em;
-    line-height: 1.5;
-    padding: 6px 10px;
-    border-radius: 6px;
-    background: var(--primary-color-pale);
-    color: var(--text-color-primary);
-}
-
 .chat-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 14px; }
 .chat-empty { margin: auto; text-align: center; color: var(--text-color-secondary); font-size: 0.88em; line-height: 1.7; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .chat-empty img { width: 96px; height: 96px; margin-bottom: 6px; }
@@ -276,10 +151,253 @@ body.dark-mode .chat-action.danger { color: #F2A48C; }
 @media (hover: none) {
     .chat-actions { opacity: 1; }
 }
-/* 側欄打開時，畫布右上角的樹系選擇按鈕與面板往左讓開 */
-body.chat-open #toggle-tree-selector-btn { right: calc(min(420px, 100vw) + 15px); }
-body.chat-open #tree-selector-panel { right: calc(min(420px, 100vw) + 10px); }
-@media (max-width: 700px) {
-    #ai-chat-btn span:not(.chat-count) { display: none; }
-    #ai-mode-toggle button { padding: 0 8px; }
+
+
+
+/* ===== 助手對話區：從下方拉出，佔畫面約 1/3～2/3，畫布會跟著縮到上方 ===== */
+#assistant-sheet {
+    --sheet-height: 45vh;
+    position: relative;
+    flex-shrink: 0;
+    height: 0;
+    overflow: hidden;
+    background: var(--background-color);
+    border-top: 1px solid transparent;
+    box-shadow: 0 -10px 28px rgba(59, 47, 39, 0.08);
+    transition: height 0.28s ease;
+}
+#assistant-sheet.open { height: var(--sheet-height); border-top-color: var(--border-color); }
+#assistant-sheet.resizing { transition: none; user-select: none; }
+.sheet-resizer { position: absolute; top: 0; left: 0; right: 0; height: 12px; cursor: ns-resize; z-index: 3; }
+.sheet-resizer::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 5px;
+    width: 44px;
+    height: 4px;
+    margin-left: -22px;
+    border-radius: 2px;
+    background: var(--border-color);
+}
+.sheet-inner { display: flex; height: 100%; }
+
+/* 左側聊天室清單 */
+.sheet-rooms {
+    width: 0;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-color);
+    border-right: 1px solid transparent;
+    transition: width 0.22s ease;
+}
+#assistant-sheet.rooms-open .sheet-rooms { width: 260px; border-right-color: var(--border-color-light); }
+.rooms-head, .rooms-list, .rooms-foot { min-width: 260px; box-sizing: border-box; }
+.rooms-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 12px 8px 16px; }
+.rooms-title { font-weight: 700; }
+.rooms-new {
+    padding: 4px 10px;
+    font-size: 0.82em;
+    border: 1px solid var(--rs-amber);
+    border-radius: 8px;
+    background: var(--background-color);
+    color: var(--text-color-primary);
+}
+.rooms-new:hover { background: var(--primary-color-pale); }
+.rooms-list { list-style: none; margin: 0; padding: 4px 8px; overflow-y: auto; flex: 1; }
+.rooms-empty { padding: 10px 8px; font-size: 0.82em; color: var(--text-color-secondary); line-height: 1.6; }
+.room-item { display: flex; align-items: center; border-radius: 10px; margin-bottom: 2px; }
+.room-item:hover { background: var(--surface-color-hover); }
+.room-item.active { background: var(--primary-color-pale); }
+.room-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-color-primary);
+    text-align: left;
+}
+.room-name { font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-item.active .room-name { font-weight: 700; }
+.room-meta { font-size: 0.74em; color: var(--text-color-secondary); }
+.room-tools { display: none; gap: 4px; padding-right: 6px; }
+.room-item:hover .room-tools,
+.room-item:focus-within .room-tools { display: flex; }
+.rooms-foot { padding: 8px 16px 14px; font-size: 0.72em; color: var(--text-color-secondary); }
+
+/* 右側對話 */
+.sheet-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sheet-head { display: flex; align-items: center; gap: 8px; padding: 16px 18px 6px; }
+.rooms-toggle, .sheet-close {
+    width: 32px;
+    height: 30px;
+    padding: 0;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--background-color);
+    color: var(--text-color-secondary);
+    font-size: 1em;
+    line-height: 1;
+}
+.rooms-toggle:hover, .sheet-close:hover { color: var(--text-color-primary); background: var(--surface-color-hover); }
+#assistant-sheet.rooms-open .rooms-toggle { background: var(--primary-color-pale); color: var(--text-color-primary); }
+.sheet-title { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-capacity { font-size: 0.78em; color: var(--text-color-secondary); white-space: nowrap; }
+.chat-load-latest {
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--rs-amber);
+    border-radius: 8px;
+    background: var(--background-color);
+    color: var(--text-color-primary);
+    font-size: 0.82em;
+    white-space: nowrap;
+}
+.chat-load-latest:hover:not(:disabled) { background: var(--primary-color-pale); }
+.chat-load-latest:disabled { opacity: 0.45; border-color: var(--border-color); cursor: default; }
+.chat-notice {
+    margin: 0 18px 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.8em;
+    line-height: 1.5;
+    background: var(--primary-color-pale);
+    color: var(--text-color-primary);
+}
+/* 對話內容與輸入框左右撐滿整個對話區 */
+#assistant-sheet .chat-body { padding: 8px 18px 4px; }
+#assistant-sheet .chat-body > * { width: 100%; }
+#assistant-sheet .chat-bubble { max-width: 78%; }
+
+/* 輸入框：圓角大框，模式切換與送出按鈕在框內下方 */
+/* 輸入列的左下角正好是貓固定的位置（left 18px、bottom 18px），預留同樣大小的空位 */
+.sheet-composer { display: flex; align-items: flex-end; gap: 12px; padding: 6px 18px 18px 18px; }
+/* 貓在對話區裡和浮在左下角時一樣大，展開或收起都不會變大變小 */
+.composer-mascot-slot { width: var(--mascot-size); height: var(--mascot-size); flex-shrink: 0; }
+.composer-column { flex: 1; min-width: 0; }
+/* 聊天室清單展開時，貓落在清單底部：清單預留貓的位置，輸入列就不用再留 */
+#assistant-sheet.rooms-open .composer-mascot-slot { display: none; }
+#assistant-sheet.rooms-open .rooms-foot { padding-bottom: calc(var(--mascot-size) + 30px); }
+.composer-box {
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--background-color);
+    padding: 10px 12px 8px;
+    box-shadow: 0 2px 10px rgba(59, 47, 39, 0.06);
+    transition: border-color 0.15s ease;
+}
+.composer-box:focus-within { border-color: var(--rs-amber); }
+#assistant-sheet #user-text-input {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 2px 4px;
+    min-height: 24px;
+    max-height: 140px;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    font-size: 0.95em;
+    line-height: 1.6;
+    resize: none;
+}
+#assistant-sheet #user-text-input:focus { box-shadow: none; outline: none; }
+.composer-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.composer-hint { flex: 1; min-width: 0; font-size: 0.74em; color: var(--text-color-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#ai-mode-toggle { display: inline-flex; flex-shrink: 0; padding: 2px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--surface-color); }
+#ai-mode-toggle button { border: none; background: transparent; color: var(--text-color-secondary); padding: 3px 12px; border-radius: 8px; font-size: 0.84em; white-space: nowrap; }
+#ai-mode-toggle button:hover { color: var(--text-color-primary); }
+#ai-mode-toggle button.active { background: var(--rs-amber); color: #FFFFFF; font-weight: 600; }
+#ai-handoff-btn {
+    height: 32px;
+    padding: 0 12px;
+    flex-shrink: 0;
+    border: 1px solid var(--rs-amber);
+    border-radius: 10px;
+    background: var(--primary-color-pale);
+    color: var(--text-color-primary);
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+#ai-handoff-btn:hover { background: var(--rs-apricot); color: #3B2F27; }
+#ai-handoff-btn:disabled { opacity: 0.6; cursor: progress; }
+#assistant-sheet #run-dialogue-btn {
+    height: 32px;
+    line-height: normal;
+    padding: 0 18px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    align-self: auto;
+}
+
+/* ===== 左下角的助手貓 ===== */
+:root { --mascot-size: 80px; }
+#assistant-mascot {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 1450;
+    width: var(--mascot-size);
+    height: var(--mascot-size);
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    filter: drop-shadow(0 6px 10px rgba(59, 47, 39, 0.28));
+    transition: transform 0.2s ease;
+}
+/* 只有生成家系圖時播放動畫（換成 cat-1-run），其他時候保持靜止 */
+#assistant-mascot img { display: block; width: 100%; height: 100%; }
+#assistant-mascot:hover { transform: translateY(-3px) rotate(-4deg); }
+#assistant-mascot:focus-visible { outline: 2px solid var(--rs-amber); outline-offset: 4px; border-radius: 50%; }
+
+
+/* 對話區收起時，狀態訊息從貓旁邊冒出來 */
+#assistant-bubble {
+    position: fixed;
+    left: calc(var(--mascot-size) + 28px);
+    bottom: 58px;
+    z-index: 1450;
+    max-width: min(380px, calc(100vw - var(--mascot-size) - 52px));
+    padding: 9px 13px;
+    border-radius: 14px 14px 14px 4px;
+    border: 1px solid var(--border-color);
+    background: var(--background-color);
+    color: var(--text-color-primary);
+    box-shadow: 0 8px 22px rgba(59, 47, 39, 0.16);
+    font-size: 0.88em;
+    line-height: 1.55;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+#assistant-bubble.visible { opacity: 1; transform: none; pointer-events: auto; }
+#assistant-bubble.speech-success { background: var(--primary-color-pale); }
+#assistant-bubble.speech-error { background: #F6E1DA; color: #8A3B22; border-color: #E8BFB1; }
+body.dark-mode #assistant-bubble.speech-error { background: #4A2A20; color: #F6CDBE; border-color: #6A3A2C; }
+body.sheet-open #assistant-bubble { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    #assistant-sheet, .sheet-rooms { transition: none; }
+}
+
+@media (max-width: 760px) {
+    #assistant-sheet.rooms-open .sheet-rooms { position: absolute; z-index: 4; top: 0; bottom: 0; left: 0; box-shadow: 6px 0 20px rgba(0, 0, 0, 0.15); }
+    .composer-hint, .chat-capacity { display: none; }
+    :root { --mascot-size: 60px; }
+    #assistant-mascot { left: 12px; bottom: 12px; }
+    #assistant-bubble { left: 82px; bottom: 40px; }
+    .sheet-composer { padding: 6px 10px 12px 12px; gap: 8px; }
+    .sheet-head { padding: 14px 10px 6px; }
+    #assistant-sheet .chat-body { padding: 8px 10px 4px; }
+    #assistant-sheet.rooms-open .composer-mascot-slot { display: block; }
 }

@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 排版完成後把案主移到畫布可見區域的正中間（聊天室側欄打開時扣掉側欄寬度）
+    // 排版完成後把案主移到畫布可見區域的正中間（對話區展開時畫布會變矮，以縮小後的畫布為準）
     function centerOnProband() {
         if (!scalableWrapper || !familyTreeContainer) return;
         const proband = scalableWrapper.querySelector('.person-figure.is-proband');
@@ -103,11 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scalableWrapper.style.transform = `translate(0px, 0px) scale(${currentScale})`;
         void scalableWrapper.offsetWidth; // 讓瀏覽器先套用沒有平移的位置，再量人物的位置
         const r = proband.getBoundingClientRect();
-        const drawer = document.getElementById('chat-drawer');
-        const visibleRight = drawer && drawer.classList.contains('visible')
-            ? Math.min(containerRect.right, drawer.getBoundingClientRect().left)
-            : containerRect.right;
-        panX = (containerRect.left + visibleRight) / 2 - (r.left + r.width / 2);
+        panX = (containerRect.left + containerRect.right) / 2 - (r.left + r.width / 2);
         panY = (containerRect.top + containerRect.bottom) / 2 - (r.top + r.height / 2);
         applyTransform();
     }

@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     empty.innerHTML = `
         <img src="assets/cats/cat-9.webp" width="150" height="150" alt="">
         <div class="empty-title">用一段話，畫出一個家</div>
-        <div class="empty-hint">在下方描述家庭成員與關係，按 <kbd>Shift</kbd> + <kbd>Enter</kbd> 送出；<br>或切到「編輯」直接撰寫 FTDL。</div>`;
+        <div class="empty-hint">點左下角的貓咪，跟牠描述家庭成員與關係；<br>或切到「編輯」直接撰寫 FTDL。</div>`;
     container.appendChild(empty);
 
     // 畫布上有人物時就藏起來；person.js 每次重畫都會換掉 wrapper 的內容，所以持續觀察

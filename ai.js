@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('user-text-input');
     const runBtn = document.getElementById('run-dialogue-btn');
     const settingsBtn = document.getElementById('ai-settings-btn');
-    const dialogue = document.getElementById('dialogue-container');
     const editor = document.getElementById('ftdl-editor');
     const executeBtn = document.getElementById('execute-ftdl-btn');
 
@@ -280,25 +279,64 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
     if (settingsBtn) settingsBtn.addEventListener('click', () => openSettings());
 
     // --- 狀態顯示 ---
+    // 對話區展開時顯示在輸入框上方；收起時改成從左下角的貓旁邊冒出的對話泡泡
+    const statusEl = document.getElementById('ai-status');
+    const speech = document.getElementById('assistant-bubble');
+    let speechTimer = null;
+    let lastStatus = null;
+    const sheetIsOpen = () => document.getElementById('assistant-sheet').classList.contains('open');
+    const aiRunning = () => document.body.classList.contains('ai-running');
+    function hideBubble() {
+        clearTimeout(speechTimer);
+        speech.classList.remove('visible');
+    }
+    // 執行中的訊息一直留著；結束後成功的訊息 6 秒後消失，失敗的留到使用者點它
+    function scheduleBubbleHide(type) {
+        clearTimeout(speechTimer);
+        if (!aiRunning() && type !== 'error') speechTimer = setTimeout(hideBubble, type === 'success' ? 6000 : 12000);
+    }
+    function showBubble(text, type = 'info') {
+        if (sheetIsOpen()) return;
+        speech.className = `visible speech-${type}`;
+        speech.textContent = text;
+        scheduleBubbleHide(type);
+    }
     function setStatus(text, type = 'info') {
-        let status = document.getElementById('ai-status');
-        if (!status) {
-            status = document.createElement('div');
-            status.id = 'ai-status';
-            dialogue.appendChild(status);
-        }
-        if (!text) { status.style.display = 'none'; return; }
-        status.className = `ai-status-${type}`;
-        status.textContent = text;
-        status.style.display = 'block';
-        if (type === 'success') setTimeout(() => { if (status.textContent === text) status.style.display = 'none'; }, 6000);
+        if (!text) { statusEl.style.display = 'none'; hideBubble(); lastStatus = null; return; }
+        lastStatus = { text, type };
+        statusEl.className = `ai-status-${type}`;
+        statusEl.textContent = text;
+        statusEl.style.display = 'block';
+        if (type === 'success') setTimeout(() => { if (statusEl.textContent === text) statusEl.style.display = 'none'; }, 6000);
+        showBubble(text, type);
     }
 
-    function setBusy(busy) {
+    // 左下角的貓：生成模式是 cat-1，引導模式換成引導助手（cat-5）；
+    // 只有生成家系圖時播放 cat-1 的動畫，其他時候（包括引導助手回覆中）都是靜態圖
+    const mascotImg = document.querySelector('#assistant-mascot img');
+    const MASCOT_IMAGES = { generate: 'assets/cats/cat-1.webp', guide: 'assets/cats/cat-5.webp' };
+    const MASCOT_RUNNING = 'assets/cats/cat-1-run.webp';
+    [MASCOT_RUNNING, MASCOT_IMAGES.guide].forEach(src => { new Image().src = src; }); // 先載入，切換時不會閃
+    function updateMascot(busyKind = null) {
+        if (!mascotImg) return;
+        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const kind = busyKind || mode;
+        const src = busyKind === 'generate' && !reduceMotion ? MASCOT_RUNNING : MASCOT_IMAGES[kind];
+        if (mascotImg.getAttribute('src') !== src) mascotImg.src = src;
+        document.body.classList.toggle('guide-mode', mode === 'guide');
+    }
+
+    // kind：'generate'（生成家系圖，含交給生成助手）或 'guide'（引導助手回覆）
+    function setBusy(busy, kind = 'generate') {
+        document.body.classList.toggle('ai-running', busy);
+        document.body.classList.toggle('ai-generating', busy && kind === 'generate');
+        updateMascot(busy ? kind : null);
+        // 結束後，泡泡裡的最後一則訊息照一般規則自動消失
+        if (!busy && lastStatus && speech.classList.contains('visible')) scheduleBubbleHide(lastStatus.type);
         input.disabled = busy;
         runBtn.disabled = busy;
         runBtn.classList.toggle('is-busy', busy);
-        runBtn.textContent = busy ? '產生中…' : '執行';
+        runBtn.textContent = busy ? '回覆中…' : '送出';
     }
 
     // --- Gemini API ---
@@ -368,30 +406,47 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         }
     }
 
+    // 模型忙碌（503）或伺服器暫時錯誤時要重試的 HTTP 狀態
+    const BUSY_STATUSES = [500, 502, 503, 504];
+    const BUSY_RETRIES = CONFIG.busyRetries ?? 2;
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+
     async function streamWithRetry(url, options, onText) {
         let lastError;
-        for (let attempt = 0; attempt <= NETWORK_RETRIES; attempt++) {
+        let networkAttempts = 0, busyAttempts = 0;
+        for (;;) {
             try {
                 return await streamOnce(url, options, onText);
             } catch (err) {
+                if (BUSY_STATUSES.includes(err.status)) {
+                    // 模型忙碌：等幾秒再試，間隔逐次拉長
+                    err.isBusy = true;
+                    if (busyAttempts >= BUSY_RETRIES) throw err;
+                    busyAttempts++;
+                    const seconds = busyAttempts * 3;
+                    setStatus(`模型目前很忙，${seconds} 秒後自動重試（第 ${busyAttempts} 次）…`);
+                    await wait(seconds * 1000);
+                    continue;
+                }
                 if (err.status || err.message.startsWith('模型沒有回傳內容')) throw err;
                 lastError = err;
                 lastError.isNetwork = true;
                 lastError.isTimeout = err.name === 'AbortError';
-                if (attempt < NETWORK_RETRIES) {
-                    setStatus(`連線中斷，正在重試（第 ${attempt + 1} 次）…`);
-                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-                }
+                if (networkAttempts >= NETWORK_RETRIES) throw lastError;
+                networkAttempts++;
+                setStatus(`連線中斷，正在重試（第 ${networkAttempts} 次）…`);
+                await wait(1000 * networkAttempts);
             }
         }
-        throw lastError;
     }
+
+    // 目前的模型一直很忙時，自動改用清單裡的下一個模型再試一次
+    const FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-flash-lite-latest'];
 
     // mode：'generate' 用生成 FTDL 的提示詞，'guide' 用引導助手的提示詞；onText 會在每次收到新文字時呼叫
     async function callGemini(contents, { mode = 'generate', onText = null } = {}) {
-        const model = getModel();
         const prompt = (mode === 'guide' ? GUIDE_PROMPT : SYSTEM_PROMPT).replace('{{TODAY_YEAR}}', String(new Date().getFullYear()));
-        return streamWithRetry(`${API_BASE}/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+        const options = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() },
             body: JSON.stringify({
@@ -403,7 +458,22 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                     thinkingConfig: { includeThoughts: true }
                 }
             })
-        }, onText);
+        };
+        const urlFor = model => `${API_BASE}/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`;
+        const model = getModel();
+        try {
+            return await streamWithRetry(urlFor(model), options, onText);
+        } catch (err) {
+            const fallback = FALLBACK_MODELS.find(m => m !== model);
+            if (!err.isBusy || !fallback) throw err;
+            setStatus(`${model} 目前很忙，改用 ${fallback} 再試一次…`);
+            try {
+                return await streamWithRetry(urlFor(fallback), options, onText);
+            } catch (fallbackErr) {
+                if (fallbackErr.isBusy) fallbackErr.triedModels = [model, fallback];
+                throw fallbackErr;
+            }
+        }
     }
 
     function extractFtdl(text) {
@@ -582,39 +652,27 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         return contents;
     }
 
-    // --- 介面：模式切換、聊天室按鈕、交給生成助手、聊天室側欄 ---
+    // --- 介面：左下角的助手貓、從下方拉出的對話區、左側聊天室清單 ---
     let mode = 'generate';
     try { if (localStorage.getItem(MODE_STORAGE) === 'guide') mode = 'guide'; } catch (e) { /* 忽略 */ }
 
-    const chatBtn = document.createElement('button');
-    chatBtn.id = 'ai-chat-btn';
-    chatBtn.type = 'button';
-    chatBtn.title = '聊天室（最多 10 個，每個最多 20 筆）';
-    chatBtn.innerHTML = '<img src="assets/cats/cat-6-sm.webp" width="22" height="22" alt=""><span>聊天室</span><span class="chat-count"></span>';
-
-    const modeToggle = document.createElement('div');
-    modeToggle.id = 'ai-mode-toggle';
-    modeToggle.setAttribute('role', 'group');
-    modeToggle.setAttribute('aria-label', '助手模式');
-    modeToggle.innerHTML = `
-        <button type="button" data-mode="generate" title="直接把描述轉成家系圖">生成</button>
-        <button type="button" data-mode="guide" title="由引導助手陪你一步步整理家庭故事">引導</button>`;
-
-    const handoffBtn = document.createElement('button');
-    handoffBtn.id = 'ai-handoff-btn';
-    handoffBtn.type = 'button';
-    handoffBtn.textContent = '產生家系圖';
-    handoffBtn.title = '把這個聊天室目前的所有資訊交給生成助手，畫出家系圖';
-
-    if (dialogue && input) {
-        dialogue.insertBefore(chatBtn, input);
-        dialogue.insertBefore(modeToggle, input);
-    }
-    if (runBtn) runBtn.insertAdjacentElement('beforebegin', handoffBtn);
+    const sheet = document.getElementById('assistant-sheet');
+    const mascot = document.getElementById('assistant-mascot');
+    const modeToggle = document.getElementById('ai-mode-toggle');
+    const handoffBtn = document.getElementById('ai-handoff-btn');
+    const roomsList = sheet.querySelector('.rooms-list');
+    const chatBody = sheet.querySelector('.chat-body');
+    const notice = sheet.querySelector('.chat-notice');
+    const SHEET_HEIGHT_STORAGE = 'ftdlSheetHeight';
+    const ROOMS_OPEN_STORAGE = 'ftdlRoomsOpen';
+    const AVATAR_GENERATE = 'assets/cats/cat-1.webp';
+    const AVATAR_GUIDE = 'assets/cats/cat-5.webp';
+    let editingNo = null;
+    let pending = null; // 送出中的那一筆：{ user, mode, text }
 
     const PLACEHOLDERS = {
-        generate: '描述家庭成員與關係，例如：父親 1968 年生……（Shift+Enter 送出，#編號 可提及）',
-        guide: '和引導助手聊聊你想畫的家庭，例如：我想整理我們家三代的關係……（Shift+Enter 送出）'
+        generate: '描述家庭成員與關係，例如：父親 1968 年生，和母親結婚三十年，有一兒一女……',
+        guide: '和引導助手聊聊你想畫的家庭，例如：我想整理我們家三代的關係……'
     };
     function applyMode(next) {
         mode = next;
@@ -625,47 +683,79 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             b.setAttribute('aria-pressed', String(on));
         });
         handoffBtn.style.display = mode === 'guide' ? '' : 'none';
-        if (input) input.placeholder = PLACEHOLDERS[mode];
+        input.placeholder = PLACEHOLDERS[mode];
+        if (!document.body.classList.contains('ai-running')) updateMascot();
     }
     modeToggle.querySelectorAll('button').forEach(b => b.addEventListener('click', () => applyMode(b.dataset.mode)));
 
-    const drawer = document.createElement('aside');
-    drawer.id = 'chat-drawer';
-    drawer.setAttribute('aria-label', '聊天室');
-    drawer.innerHTML = `
-        <div class="chat-head">
-            <div class="chat-head-row">
-                <select class="chat-room-select" aria-label="選擇聊天室"></select>
-                <button type="button" class="chat-new" title="開一個新的聊天室">＋ 新聊天室</button>
-                <button type="button" class="chat-close" aria-label="關閉聊天室">×</button>
-            </div>
-            <div class="chat-head-row chat-tools">
-                <button type="button" class="chat-load-latest" title="把這個聊天室最新的一份 FTDL 載入編輯器並畫出來">載入最新家系圖</button>
-                <button type="button" class="chat-rename">重新命名</button>
-                <button type="button" class="chat-delete-room">刪除聊天室</button>
-                <span class="chat-capacity"></span>
-            </div>
-            <div class="chat-notice" hidden></div>
-        </div>
-        <div class="chat-body"></div>`;
-    document.body.appendChild(drawer);
-    const roomSelect = drawer.querySelector('.chat-room-select');
-    const chatBody = drawer.querySelector('.chat-body');
-    const notice = drawer.querySelector('.chat-notice');
-    let editingNo = null;
-    let pending = null; // 送出中的那一筆：{ user, mode, text }
-
-    function positionDrawer() {
-        const header = document.getElementById('app-header');
-        const top = header ? header.getBoundingClientRect().bottom : 0;
-        const bottom = dialogue ? window.innerHeight - dialogue.getBoundingClientRect().top : 0;
-        drawer.style.top = `${top}px`;
-        drawer.style.bottom = `${bottom}px`;
+    // 對話區開關：貓一直固定在畫面左下角同一個位置（不搬動，才不會閃），
+    // 對話區展開時輸入框在貓的位置預留空位
+    const isSheetOpen = () => sheet.classList.contains('open');
+    function placeMascot() {
+        mascot.setAttribute('aria-expanded', String(isSheetOpen()));
+        mascot.title = isSheetOpen() ? '收起對話區' : '和助手對話';
     }
-    // 側欄打開時在 body 加上 chat-open，讓畫布右上角的樹系選擇按鈕與面板往左讓開
-    function openDrawer() { positionDrawer(); drawer.classList.add('visible'); chatBtn.classList.add('active'); document.body.classList.add('chat-open'); scrollChatToEnd(); }
-    function closeDrawer() { drawer.classList.remove('visible'); chatBtn.classList.remove('active'); document.body.classList.remove('chat-open'); editingNo = null; }
+    function openSheet() {
+        if (isSheetOpen()) return;
+        sheet.classList.add('open');
+        document.body.classList.add('sheet-open');
+        hideBubble();
+        placeMascot();
+        renderChat();
+        scrollChatToEnd();
+        setTimeout(() => input.focus(), 200);
+    }
+    function closeSheet() {
+        if (!isSheetOpen()) return;
+        sheet.classList.remove('open');
+        document.body.classList.remove('sheet-open');
+        editingNo = null;
+        placeMascot();
+        // 還在跑的話，把目前的進度（或引導助手正在打的字）放到貓旁邊的泡泡
+        if (aiRunning()) {
+            if (pending && pending.mode === 'guide' && pending.text) showBubble(guidePreview(pending.text));
+            else if (lastStatus) showBubble(lastStatus.text, lastStatus.type);
+        }
+    }
+    // 引導助手回覆中、對話區收起時，泡泡顯示牠正在打的最後一段字
+    const guidePreview = text => {
+        const flat = text.replace(/\s+/g, ' ').trim();
+        return `引導助手：${flat.length > 90 ? '…' + flat.slice(-90) : flat}`;
+    };
     function scrollChatToEnd() { chatBody.scrollTop = chatBody.scrollHeight; }
+    mascot.addEventListener('click', () => { if (isSheetOpen()) closeSheet(); else openSheet(); });
+    sheet.querySelector('.sheet-close').addEventListener('click', closeSheet);
+    document.getElementById('assistant-bubble').addEventListener('click', openSheet);
+
+    // 拖曳對話區上緣調整高度：介於畫面的 1/3 到 2/3
+    function applySheetHeight(px) {
+        const h = Math.round(Math.max(window.innerHeight / 3, Math.min(window.innerHeight * 2 / 3, px)));
+        sheet.style.setProperty('--sheet-height', `${h}px`);
+        return h;
+    }
+    try { const saved = parseFloat(localStorage.getItem(SHEET_HEIGHT_STORAGE)); if (saved) applySheetHeight(saved); } catch (e) { /* 忽略 */ }
+    sheet.querySelector('.sheet-resizer').addEventListener('pointerdown', e => {
+        e.preventDefault();
+        sheet.classList.add('resizing');
+        const move = ev => applySheetHeight(window.innerHeight - ev.clientY);
+        const up = ev => {
+            sheet.classList.remove('resizing');
+            const h = applySheetHeight(window.innerHeight - ev.clientY);
+            try { localStorage.setItem(SHEET_HEIGHT_STORAGE, String(h)); } catch (err) { /* 忽略 */ }
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+    });
+
+    // 左側聊天室清單：可以展開或收起，記住上次的狀態
+    function setRoomsOpen(open) {
+        sheet.classList.toggle('rooms-open', open);
+        try { localStorage.setItem(ROOMS_OPEN_STORAGE, open ? '1' : '0'); } catch (e) { /* 忽略 */ }
+    }
+    try { setRoomsOpen(localStorage.getItem(ROOMS_OPEN_STORAGE) === '1'); } catch (e) { /* 忽略 */ }
+    sheet.querySelector('.rooms-toggle').addEventListener('click', () => setRoomsOpen(!sheet.classList.contains('rooms-open')));
 
     function smallButton(text, handler, extraClass = '') {
         const b = document.createElement('button');
@@ -701,6 +791,26 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         mutator(room, chat);
         room.updatedAt = Date.now();
         saveChat(chat);
+        renderChat();
+    }
+    function renameRoom(id) {
+        const chat = loadChat();
+        const room = chat.rooms.find(r => r.id === id);
+        if (!room) return;
+        const name = prompt('聊天室名稱', room.title);
+        if (name && name.trim()) { room.title = name.trim().slice(0, 40); room.updatedAt = Date.now(); saveChat(chat); renderChat(); }
+    }
+    function deleteRoom(id) {
+        const chat = loadChat();
+        const room = chat.rooms.find(r => r.id === id);
+        if (!room || !confirm(`刪除聊天室「${room.title}」和裡面的 ${room.items.length} 筆對話？刪除後無法復原。`)) return;
+        chat.rooms = chat.rooms.filter(r => r.id !== id);
+        if (chat.currentId === id) {
+            const next = [...chat.rooms].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+            chat.currentId = next ? next.id : null;
+        }
+        saveChat(chat);
+        editingNo = null;
         renderChat();
     }
 
@@ -775,10 +885,10 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             wrap.appendChild(row);
         }
         if (it.ftdl) {
-            const { row, b } = bubble('assistant', 'assets/cats/cat-4-sm.webp');
+            const { row, b } = bubble('assistant', AVATAR_GENERATE);
             const title = document.createElement('div');
             title.className = 'chat-ftdl-title';
-            title.textContent = `產生了家系圖（${countPeople(it.ftdl)} 人）`;
+            title.textContent = `畫好了家系圖（${countPeople(it.ftdl)} 人）`;
             b.appendChild(title);
             const pre = document.createElement('pre');
             pre.className = 'chat-ftdl';
@@ -793,7 +903,7 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             b.append(tools, pre);
             wrap.appendChild(row);
         } else if (it.reply) {
-            const { row, b } = bubble('assistant', 'assets/cats/cat-5.webp');
+            const { row, b } = bubble('assistant', AVATAR_GUIDE);
             b.textContent = it.reply;
             wrap.appendChild(row);
         }
@@ -812,32 +922,59 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         return wrap;
     }
 
+    function renderRooms(chat, room) {
+        roomsList.innerHTML = '';
+        const sorted = [...chat.rooms].sort((a, b) => b.updatedAt - a.updatedAt);
+        if (!sorted.length) {
+            const empty = document.createElement('li');
+            empty.className = 'rooms-empty';
+            empty.textContent = '還沒有聊天室。送出第一則訊息時會自動建立。';
+            roomsList.appendChild(empty);
+            return;
+        }
+        sorted.forEach(r => {
+            const li = document.createElement('li');
+            li.className = 'room-item' + (room && r.id === room.id ? ' active' : '');
+            const main = document.createElement('button');
+            main.type = 'button';
+            main.className = 'room-main';
+            const name = document.createElement('span');
+            name.className = 'room-name';
+            name.textContent = r.title;
+            const meta = document.createElement('span');
+            meta.className = 'room-meta';
+            meta.textContent = `${r.items.length} 筆 · ${formatTime(r.updatedAt)}`;
+            main.append(name, meta);
+            main.addEventListener('click', () => {
+                const c = loadChat();
+                if (!c.rooms.some(x => x.id === r.id)) return;
+                c.currentId = r.id;
+                saveChat(c);
+                editingNo = null;
+                renderChat();
+                scrollChatToEnd();
+                if (window.innerWidth < 760) setRoomsOpen(false);
+            });
+            const tools = document.createElement('span');
+            tools.className = 'room-tools';
+            tools.append(
+                smallButton('改名', () => renameRoom(r.id)),
+                smallButton('刪除', () => deleteRoom(r.id), 'danger')
+            );
+            li.append(main, tools);
+            roomsList.appendChild(li);
+        });
+    }
+
     function renderChat() {
         const chat = loadChat();
         const room = currentRoom(chat);
-        // 聊天室選單：最近使用的排前面
-        roomSelect.innerHTML = '';
-        const sorted = [...chat.rooms].sort((a, b) => b.updatedAt - a.updatedAt);
-        if (!sorted.length) {
-            const opt = document.createElement('option');
-            opt.textContent = '（還沒有聊天室）';
-            opt.value = '';
-            roomSelect.appendChild(opt);
-        }
-        sorted.forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = String(r.id);
-            opt.textContent = `${r.title}（${r.items.length}）`;
-            opt.selected = room && r.id === room.id;
-            roomSelect.appendChild(opt);
-        });
+        renderRooms(chat, room);
 
         const count = room ? room.items.length : 0;
-        chatBtn.querySelector('.chat-count').textContent = count ? String(count) : '';
-        drawer.querySelector('.chat-capacity').textContent = room ? `${count}/${ITEM_LIMIT} 筆` : '';
-        drawer.querySelector('.chat-load-latest').disabled = !latestFtdlItem(room);
-        drawer.querySelector('.chat-rename').disabled = !room;
-        drawer.querySelector('.chat-delete-room').disabled = !room;
+        sheet.querySelector('.sheet-title').textContent = room ? room.title : DEFAULT_ROOM_TITLE;
+        sheet.querySelector('.chat-capacity').textContent = room ? `${count}/${ITEM_LIMIT} 筆` : '';
+        sheet.querySelector('.chat-load-latest').disabled = !latestFtdlItem(room);
 
         // 小提示：已經開始刪除舊對話，或快要到上限
         if (room && room.trimmedAt) {
@@ -855,10 +992,9 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             const empty = document.createElement('div');
             empty.className = 'chat-empty';
             empty.innerHTML = `
-                <img src="assets/cats/cat-5.webp" width="96" height="96" alt="">
-                <div class="chat-empty-title">開始一段新的對話</div>
-                <div>選「<b>引導</b>」，助手會先和你確認目標，再一步步整理家庭故事；</div>
-                <div>選「<b>生成</b>」，直接描述家庭，馬上畫出家系圖。</div>`;
+                <div class="chat-empty-title">嗨，想畫誰的家？</div>
+                <div>選「<b>生成</b>」，直接描述家庭，我會馬上畫出家系圖；</div>
+                <div>選「<b>引導</b>」，引導助手會先和你確認目標，再一步步整理家庭故事。</div>`;
             chatBody.appendChild(empty);
         } else {
             room.items.forEach(it => chatBody.appendChild(renderItem(it)));
@@ -871,62 +1007,36 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                 b.textContent = pending.mode === 'handoff' ? '（交給生成助手）' : pending.user;
                 wrap.appendChild(row);
             }
-            const { row, b } = bubble('assistant', pending.mode === 'guide' ? 'assets/cats/cat-5.webp' : 'assets/cats/cat-4-sm.webp');
+            const { row, b } = bubble('assistant', pending.mode === 'guide' ? AVATAR_GUIDE : AVATAR_GENERATE);
             b.classList.add('typing');
-            b.textContent = pending.text || (pending.mode === 'guide' ? '思考中…' : '正在產生家系圖…');
+            b.textContent = pending.text || (pending.mode === 'guide' ? '思考中…' : '正在畫家系圖…');
             pending.bubbleEl = b;
             wrap.appendChild(row);
             chatBody.appendChild(wrap);
         }
     }
 
-    chatBtn.addEventListener('click', () => { if (drawer.classList.contains('visible')) closeDrawer(); else { renderChat(); openDrawer(); } });
-    drawer.querySelector('.chat-close').addEventListener('click', closeDrawer);
-    drawer.querySelector('.chat-new').addEventListener('click', () => {
+    sheet.querySelector('.rooms-new').addEventListener('click', () => {
         const chat = loadChat();
         createRoom(chat);
         saveChat(chat);
         editingNo = null;
         renderChat();
         input.focus();
+        if (window.innerWidth < 760) setRoomsOpen(false);
     });
-    roomSelect.addEventListener('change', () => {
-        const chat = loadChat();
-        const id = parseInt(roomSelect.value, 10);
-        if (!chat.rooms.some(r => r.id === id)) return;
-        chat.currentId = id;
-        saveChat(chat);
-        editingNo = null;
-        renderChat();
-        scrollChatToEnd();
-    });
-    drawer.querySelector('.chat-load-latest').addEventListener('click', () => {
+    sheet.querySelector('.chat-load-latest').addEventListener('click', () => {
         const room = currentRoom(loadChat());
         const latest = latestFtdlItem(room);
         if (latest) loadFtdl(latest.ftdl, `聊天室「${room.title}」最新（第 #${latest.no} 筆）`);
     });
-    drawer.querySelector('.chat-rename').addEventListener('click', () => {
-        const room = currentRoom(loadChat());
-        if (!room) return;
-        const name = prompt('聊天室名稱', room.title);
-        if (name && name.trim()) updateRoom(r => { r.title = name.trim().slice(0, 40); });
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || !isSheetOpen() || document.querySelector('#ai-settings-overlay.visible')) return;
+        if (document.activeElement && document.activeElement.closest('.chat-item')) return; // 正在編輯某一筆
+        closeSheet();
     });
-    drawer.querySelector('.chat-delete-room').addEventListener('click', () => {
-        const chat = loadChat();
-        const room = currentRoom(chat);
-        if (!room || !confirm(`刪除聊天室「${room.title}」和裡面的 ${room.items.length} 筆對話？刪除後無法復原。`)) return;
-        chat.rooms = chat.rooms.filter(r => r.id !== room.id);
-        const next = [...chat.rooms].sort((a, b) => b.updatedAt - a.updatedAt)[0];
-        chat.currentId = next ? next.id : null;
-        saveChat(chat);
-        renderChat();
-    });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.classList.contains('visible') && !document.querySelector('#ai-settings-overlay.visible')) closeDrawer(); });
-    window.addEventListener('resize', () => { if (drawer.classList.contains('visible')) positionDrawer(); });
-    if (dialogue && typeof ResizeObserver !== 'undefined') {
-        new ResizeObserver(() => { if (drawer.classList.contains('visible')) positionDrawer(); }).observe(dialogue);
-    }
     applyMode(mode);
+    placeMascot();
     renderChat();
 
     // --- 主流程 ---
@@ -941,6 +1051,9 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             openSettings(`呼叫失敗：${err.message}`);
         } else if (err.status === 404) {
             setStatus(`找不到模型「${getModel()}」，請到 API 設定更換模型名稱。`, 'error');
+        } else if (err.isBusy) {
+            const tried = err.triedModels ? `（已自動重試，也試過 ${err.triedModels.join('、')}）` : '（已自動重試）';
+            setStatus(`Gemini 目前使用量太大，暫時無法回應${tried}。通常過幾分鐘就會恢復，請稍後再試，或到「API 設定」換一個模型。`, 'error');
         } else if (err.status === 429) {
             setStatus('已超過 API 使用額度或請求太頻繁，請稍後再試。', 'error');
         } else {
@@ -964,7 +1077,8 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         const contents = buildContents(room, question, 'guide');
         pending = { user: question, mode: 'guide', text: '' };
         renderChat();
-        openDrawer();
+        openSheet();
+        scrollChatToEnd();
         clearInput();
         setStatus('引導助手正在回覆…');
         try {
@@ -974,11 +1088,14 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                     if (!pending) return;
                     pending.text = text;
                     if (pending.bubbleEl) { pending.bubbleEl.textContent = text; scrollChatToEnd(); }
+                    if (!isSheetOpen()) showBubble(guidePreview(text));
                 }
             });
             pending = null;
             const { item, removed } = addItem({ mode: 'guide', user: question, reply: reply.trim() });
             setStatus(`引導助手已回覆（第 #${item.no} 筆）。${trimmedNote(removed)}`, removed.length ? 'info' : 'success');
+            // 對話區收起時，泡泡直接顯示引導助手回覆的內容，不用打開也看得到牠問了什麼
+            if (!isSheetOpen()) { showBubble(guidePreview(reply), 'info'); lastStatus = { text: guidePreview(reply), type: 'info' }; }
             scrollChatToEnd();
         } catch (err) {
             pending = null;
@@ -997,7 +1114,7 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         const contents = buildContents(room, question, 'generate');
         pending = { user: question, mode: handoff ? 'handoff' : 'generate', text: '' };
         renderChat();
-        if (drawer.classList.contains('visible')) scrollChatToEnd();
+        if (isSheetOpen()) scrollChatToEnd();
         setStatus(`正在請 ${getModel()} 產生家系圖${room.items.length ? `（帶入聊天室「${room.title}」的前情）` : ''}…`
             + (missing.length ? `　這個聊天室找不到 ${missing.map(n => '#' + n).join('、')}，已略過。` : ''));
         try {
@@ -1056,7 +1173,7 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             return;
         }
         if (runBtn.disabled) return;
-        setBusy(true);
+        setBusy(true, handoff || mode !== 'guide' ? 'generate' : 'guide');
         handoffBtn.disabled = true;
         try {
             if (handoff) {
@@ -1080,6 +1197,7 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             setStatus('這個聊天室還沒有任何對話。先和引導助手聊聊家庭的狀況，再按「產生家系圖」。', 'error');
             return;
         }
+        applyMode('generate'); // 交給生成助手後，強制切回生成模式
         handleRun({ handoff: true });
     });
     if (input) {
