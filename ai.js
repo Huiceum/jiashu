@@ -396,6 +396,199 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
         return errors.length > 0 ? errors : findIsolatedPeople(ftdl);
     }
 
+    // --- 對話紀錄（存在這個瀏覽器的 localStorage，最多 10 段） ---
+    // 每段有固定編號（#1、#2…），刪除後編號不會重複使用；
+    // 在輸入框打 #編號，送出時會自動把那一段的描述與 FTDL 當作前情帶給模型，不必再複製貼上。
+    const HISTORY_STORAGE = 'ftdlConversationHistory';
+    const HISTORY_LIMIT = 10;
+
+    function loadHistory() {
+        try {
+            const data = JSON.parse(localStorage.getItem(HISTORY_STORAGE) || 'null');
+            if (data && Array.isArray(data.items)) return { seq: data.seq || 0, items: data.items };
+        } catch (e) { /* 資料損毀或無法使用 localStorage */ }
+        return { seq: 0, items: [] };
+    }
+    function saveHistory(history) {
+        try { localStorage.setItem(HISTORY_STORAGE, JSON.stringify(history)); return true; } catch (e) { return false; }
+    }
+    function addHistoryRecord(prompt, ftdl, refs) {
+        const history = loadHistory();
+        const record = { no: history.seq + 1, prompt, ftdl, refs, createdAt: Date.now(), updatedAt: null };
+        history.seq = record.no;
+        history.items.unshift(record);
+        history.items = history.items.slice(0, HISTORY_LIMIT);
+        saveHistory(history);
+        renderHistory();
+        return record;
+    }
+    function findHistoryRecord(no) {
+        return loadHistory().items.find(r => r.no === no) || null;
+    }
+    const parseRefs = text => [...new Set((text.match(/#(\d+)/g) || []).map(m => parseInt(m.slice(1), 10)))];
+    const countPeople = ftdl => (ftdl.match(/(^|[\s;}])person\s*\{/g) || []).length;
+    const formatTime = ms => {
+        const d = new Date(ms);
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    const historyBtn = document.createElement('button');
+    historyBtn.id = 'ai-history-btn';
+    historyBtn.type = 'button';
+    historyBtn.title = '對話紀錄（最多 10 段）';
+    historyBtn.innerHTML = '<img src="assets/cats/cat-6-sm.webp" width="22" height="22" alt=""><span>紀錄</span><span class="history-count"></span>';
+    if (dialogue && input) dialogue.insertBefore(historyBtn, input);
+
+    const historyPanel = document.createElement('div');
+    historyPanel.id = 'ai-history-panel';
+    historyPanel.setAttribute('role', 'dialog');
+    historyPanel.setAttribute('aria-label', '對話紀錄');
+    historyPanel.innerHTML = `
+        <div class="history-head">
+            <div>
+                <div class="history-title">對話紀錄</div>
+                <div class="history-hint">最多保留 10 段。在輸入框打 <code>#編號</code>，送出時會自動帶入那一段的描述與家系圖。</div>
+            </div>
+            <button type="button" class="history-close" aria-label="關閉">×</button>
+        </div>
+        <div class="history-list"></div>`;
+    document.body.appendChild(historyPanel);
+    const historyList = historyPanel.querySelector('.history-list');
+    let editingNo = null;
+
+    function positionHistoryPanel() {
+        const r = dialogue.getBoundingClientRect();
+        historyPanel.style.left = `${Math.max(12, r.left + 16)}px`;
+        historyPanel.style.bottom = `${Math.max(12, window.innerHeight - r.top + 8)}px`;
+        historyPanel.style.width = `${Math.min(580, r.width - 32)}px`;
+    }
+    function openHistory() { editingNo = null; renderHistory(); positionHistoryPanel(); historyPanel.classList.add('visible'); }
+    function closeHistory() { historyPanel.classList.remove('visible'); editingNo = null; }
+
+    function actionButton(text, handler, extraClass = '') {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = `history-action ${extraClass}`.trim();
+        b.textContent = text;
+        b.addEventListener('click', e => { e.stopPropagation(); handler(); });
+        return b;
+    }
+
+    function renderHistory() {
+        const { items } = loadHistory();
+        historyBtn.querySelector('.history-count').textContent = items.length ? String(items.length) : '';
+        historyList.innerHTML = '';
+        if (!items.length) {
+            const empty = document.createElement('div');
+            empty.className = 'history-empty';
+            empty.innerHTML = '<img src="assets/cats/cat-6-sm.webp" width="48" height="48" alt=""><div>還沒有紀錄。送出描述、產生家系圖後，會自動存在這裡。</div>';
+            historyList.appendChild(empty);
+            return;
+        }
+        items.forEach(record => {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            const meta = document.createElement('div');
+            meta.className = 'history-meta';
+            const badge = document.createElement('span');
+            badge.className = 'history-no';
+            badge.textContent = `#${record.no}`;
+            meta.appendChild(badge);
+            const info = document.createElement('span');
+            const parts = [formatTime(record.createdAt), `${countPeople(record.ftdl)} 人`];
+            if (record.refs && record.refs.length) parts.push(`引用 ${record.refs.map(n => '#' + n).join('、')}`);
+            if (record.updatedAt) parts.push('已編輯');
+            info.textContent = parts.join(' · ');
+            meta.appendChild(info);
+            item.appendChild(meta);
+
+            if (editingNo === record.no) {
+                const promptBox = document.createElement('textarea');
+                promptBox.className = 'history-edit-prompt';
+                promptBox.value = record.prompt;
+                promptBox.rows = 3;
+                const ftdlBox = document.createElement('textarea');
+                ftdlBox.className = 'history-edit-ftdl';
+                ftdlBox.value = record.ftdl;
+                ftdlBox.rows = 8;
+                ftdlBox.spellcheck = false;
+                const labelA = document.createElement('label'); labelA.textContent = '描述';
+                const labelB = document.createElement('label'); labelB.textContent = 'FTDL（被提及時會帶入這份內容）';
+                item.append(labelA, promptBox, labelB, ftdlBox);
+                const actions = document.createElement('div');
+                actions.className = 'history-actions';
+                actions.append(
+                    actionButton('取消', () => { editingNo = null; renderHistory(); }),
+                    actionButton('儲存', () => {
+                        const history = loadHistory();
+                        const target = history.items.find(r => r.no === record.no);
+                        if (target) {
+                            target.prompt = promptBox.value.trim() || target.prompt;
+                            target.ftdl = ftdlBox.value.trim();
+                            target.updatedAt = Date.now();
+                            saveHistory(history);
+                        }
+                        editingNo = null;
+                        renderHistory();
+                    }, 'primary')
+                );
+                item.appendChild(actions);
+            } else {
+                const prompt = document.createElement('div');
+                prompt.className = 'history-prompt';
+                prompt.textContent = record.prompt;
+                item.appendChild(prompt);
+                const actions = document.createElement('div');
+                actions.className = 'history-actions';
+                actions.append(
+                    actionButton('載入', () => {
+                        editor.value = record.ftdl;
+                        editor.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+                        executeBtn.disabled = false;
+                        executeBtn.click();
+                        closeHistory();
+                        setStatus(`已載入對話 #${record.no} 的家系圖。`, 'success');
+                    }),
+                    actionButton('提及', () => {
+                        const tag = `#${record.no} `;
+                        const start = input.selectionStart ?? input.value.length;
+                        const end = input.selectionEnd ?? start;
+                        const before = input.value.slice(0, start);
+                        const spacer = before && !/\s$/.test(before) ? ' ' : '';
+                        input.value = before + spacer + tag + input.value.slice(end);
+                        const caret = (before + spacer + tag).length;
+                        closeHistory();
+                        input.focus();
+                        input.setSelectionRange(caret, caret);
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }),
+                    actionButton('編輯', () => { editingNo = record.no; renderHistory(); }),
+                    actionButton('刪除', () => {
+                        if (!confirm(`刪除對話 #${record.no}？刪除後無法復原，這個編號也不會再使用。`)) return;
+                        const history = loadHistory();
+                        history.items = history.items.filter(r => r.no !== record.no);
+                        saveHistory(history);
+                        renderHistory();
+                    }, 'danger')
+                );
+                item.appendChild(actions);
+            }
+            historyList.appendChild(item);
+        });
+    }
+
+    historyBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (historyPanel.classList.contains('visible')) closeHistory(); else openHistory();
+    });
+    historyPanel.addEventListener('click', e => e.stopPropagation());
+    historyPanel.querySelector('.history-close').addEventListener('click', closeHistory);
+    document.addEventListener('click', () => { if (historyPanel.classList.contains('visible')) closeHistory(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && historyPanel.classList.contains('visible')) closeHistory(); });
+    window.addEventListener('resize', () => { if (historyPanel.classList.contains('visible')) positionHistoryPanel(); });
+    renderHistory();
+
     // --- 主流程 ---
     async function handleRun() {
         const question = input.value.trim();
@@ -406,9 +599,23 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             return;
         }
 
+        // 提及的對話：把那一段的描述與 FTDL 依序當作前情，再接上這次的描述
+        const refNos = parseRefs(question);
+        const refs = refNos.map(findHistoryRecord).filter(Boolean);
+        const missing = refNos.filter(no => !refs.some(r => r.no === no));
+        const contents = [];
+        refs.forEach(r => {
+            contents.push({ role: 'user', parts: [{ text: `（對話 #${r.no}）${r.prompt}` }] });
+            contents.push({ role: 'model', parts: [{ text: r.ftdl }] });
+        });
+        const refNote = refs.length
+            ? `\n\n（${refs.map(r => '#' + r.no).join('、')} 是先前的對話與它產生的 FTDL。這次的描述以它們為基礎，請輸出更新後完整的 FTDL。）`
+            : '';
+        contents.push({ role: 'user', parts: [{ text: question + refNote }] });
+
         setBusy(true);
-        setStatus(`正在請 ${getModel()} 產生家系圖…`);
-        const contents = [{ role: 'user', parts: [{ text: question }] }];
+        setStatus(`正在請 ${getModel()} 產生家系圖${refs.length ? `（引用 ${refs.map(r => '#' + r.no).join('、')}）` : ''}…`
+            + (missing.length ? `　找不到 ${missing.map(n => '#' + n).join('、')}，已略過。` : ''));
         try {
             let reply = await callGemini(contents);
             let ftdl = extractFtdl(reply);
@@ -424,18 +631,21 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                 errors = loadIntoEditor(ftdl);
             }
 
+            const record = ftdl.trim() ? addHistoryRecord(question, ftdl, refs.map(r => r.no)) : null;
+            const savedNote = record ? `（已存為對話 #${record.no}）` : '';
+
             if (errors.length > 0 && errors.every(e => e.isolated)) {
                 // 語法正確、只是有人沒接上關係：照樣畫圖，提醒使用者補上
                 executeBtn.disabled = false;
                 executeBtn.click();
-                setStatus(`家系圖已畫好，但有 ${errors.length} 個人沒有接上任何關係（${errors.map(e => e.message.split(' ')[0]).join('、')}），可到「編輯」頁補上。`, 'error');
+                setStatus(`家系圖已畫好，但有 ${errors.length} 個人沒有接上任何關係（${errors.map(e => e.message.split(' ')[0]).join('、')}），可到「編輯」頁補上。${savedNote}`, 'error');
             } else if (errors.length > 0) {
-                setStatus(`已載入編輯器，但還有 ${errors.length} 個語法或關係問題，請到「編輯」頁修正。`, 'error');
+                setStatus(`已載入編輯器，但還有 ${errors.length} 個語法或關係問題，請到「編輯」頁修正。${savedNote}`, 'error');
                 document.querySelector('.tab-btn[data-view="editor"]')?.click();
             } else {
                 executeBtn.disabled = false;
                 executeBtn.click();
-                setStatus('完成！家系圖已經畫好了，可以開心去喝一杯了 🍻', 'success');
+                setStatus(`完成！家系圖已經畫好了，可以開心去喝一杯了 🍻${savedNote}`, 'success');
                 input.value = '';
                 input.style.height = '';
             }

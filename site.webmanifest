@@ -1,0 +1,15 @@
+{
+  "name": "家書 Jiashu｜用一段話畫出一個家",
+  "short_name": "家書",
+  "description": "用一段話描述家庭，自動畫出研究用家系圖。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#FBF8F4",
+  "theme_color": "#3B2F27",
+  "lang": "zh-TW",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

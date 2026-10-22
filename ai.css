@@ -82,3 +82,101 @@
 .ai-btn-secondary { background: transparent; border-color: var(--border-color); color: var(--text-color-secondary); }
 .ai-btn-secondary:hover { background: var(--surface-color-hover); }
 #ai-key-clear { margin-right: auto; }
+
+/* --- 對話紀錄 --- */
+#ai-history-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: var(--dialogue-button-height);
+    margin-right: 10px;
+    padding: 0 10px;
+    background: var(--background-color);
+    color: var(--text-color-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-medium);
+    font-size: 0.9em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+#ai-history-btn:hover { background: var(--surface-color-hover); color: var(--text-color-primary); }
+#ai-history-btn img { width: 22px; height: 22px; }
+#ai-history-btn .history-count:not(:empty) {
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--rs-amber);
+    color: #FFFFFF;
+    font-size: 0.75em;
+    line-height: 18px;
+    text-align: center;
+}
+
+#ai-history-panel {
+    position: fixed;
+    z-index: 1500;
+    display: none;
+    flex-direction: column;
+    max-height: min(70vh, 640px);
+    background: var(--background-color);
+    color: var(--text-color-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+#ai-history-panel.visible { display: flex; }
+.history-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--border-color-light); }
+.history-title { font-weight: 700; font-size: 1.05em; }
+.history-hint { margin-top: 4px; font-size: 0.82em; color: var(--text-color-secondary); line-height: 1.5; }
+.history-hint code { background: var(--primary-color-pale); color: var(--text-color-primary); padding: 0 5px; border-radius: 4px; font-family: inherit; }
+.history-close { background: transparent; border: none; font-size: 1.4em; line-height: 1; padding: 2px 6px; color: var(--text-color-secondary); }
+.history-close:hover { color: var(--text-color-primary); }
+.history-list { overflow-y: auto; padding: 8px 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.history-empty { display: flex; align-items: center; gap: 12px; padding: 16px 8px; color: var(--text-color-secondary); font-size: 0.9em; }
+.history-item { border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; background: var(--surface-color); }
+.history-meta { display: flex; align-items: center; gap: 8px; font-size: 0.8em; color: var(--text-color-secondary); }
+.history-no { font-weight: 700; color: #FFFFFF; background: var(--rs-amber); border-radius: 6px; padding: 1px 7px; font-size: 1.05em; }
+.history-prompt {
+    margin: 6px 0 8px;
+    font-size: 0.9em;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.history-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+.history-action {
+    padding: 4px 12px;
+    font-size: 0.82em;
+    border: 1px solid var(--border-color);
+    background: var(--background-color);
+    color: var(--text-color-primary);
+    border-radius: 6px;
+}
+.history-action:hover { background: var(--surface-color-hover); }
+.history-action.primary { background: var(--primary-color); border-color: var(--primary-color); color: var(--text-color-on-primary); }
+.history-action.danger { color: #A0442A; }
+body.dark-mode .history-action.danger { color: #F2A48C; }
+.history-item label { display: block; margin: 8px 0 4px; font-size: 0.8em; color: var(--text-color-secondary); }
+.history-item textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--background-color);
+    color: var(--text-color-primary);
+    font-family: inherit;
+    font-size: 0.88em;
+    line-height: 1.5;
+    resize: vertical;
+}
+.history-item textarea.history-edit-ftdl { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.8em; }
+.history-item .history-actions { margin-top: 8px; }
+
+@media (max-width: 600px) {
+    #ai-history-btn span:not(.history-count) { display: none; }
+}

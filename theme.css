@@ -329,8 +329,93 @@ body.dark-mode {
 }
 body.dark-mode #app-header { background-color: #120E0B; }
 body.dark-mode .tab-btn.active { color: #F3E6D2; background-color: #3A2F27; }
-body.dark-mode #ai-status.ai-status-success { background: #3A2F27; color: #F3E6D2; }
-body.dark-mode #ai-status.ai-status-error { background: #4A2A20; color: #F6CDBE; }
+body.dark-mode #ai-status.ai-status-success { background-color: #3A2F27; color: #F3E6D2; }
+body.dark-mode #ai-status.ai-status-error { background-color: #4A2A20; color: #F6CDBE; }
 body.dark-mode .ai-dialog input,
 body.dark-mode .ai-dialog select { background: #1E1915; color: #EFE6DA; }
 body.dark-mode .person-figure:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
+
+/* ===== 插圖與品牌 ===== */
+.app-logo { width: 32px; height: 32px; margin-right: 10px; flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25)); }
+
+/* 空白畫布：置中的貓與說明（不隨畫布縮放、拖曳） */
+#family-tree-scalable-wrapper > p { display: none; }
+#canvas-empty-state {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    pointer-events: none;
+    color: var(--ftdl-ink-soft);
+    transition: opacity 0.25s ease;
+    width: min(420px, calc(100% - 32px));
+}
+#canvas-empty-state.hidden { opacity: 0; visibility: hidden; }
+#canvas-empty-state img { width: 150px; height: 150px; animation: cat-breathe 3.6s ease-in-out infinite; }
+#canvas-empty-state .empty-title { font-size: 1.25em; font-weight: 700; color: var(--ftdl-ink); }
+#canvas-empty-state .empty-hint { font-size: 0.9em; line-height: 1.7; }
+#canvas-empty-state kbd {
+    font-family: inherit;
+    font-size: 0.85em;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+}
+
+@keyframes cat-breathe {
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    50% { transform: translateY(-4px) scale(1.02, 0.98); }
+}
+@keyframes cat-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+/* AI 狀態列：產生中、成功、失敗各一隻貓，墊一個淺色圓底，深色模式也看得清楚 */
+#ai-status { position: relative; padding-left: 50px !important; min-height: 38px; }
+#ai-status::before {
+    content: '';
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    width: 30px;
+    height: 30px;
+    margin-top: -15px;
+    border-radius: 50%;
+    background: var(--rs-sand) no-repeat center / 24px 24px;
+}
+#ai-status.ai-status-info::before { background-image: url('assets/cats/cat-3.webp'); animation: cat-bob 1.2s ease-in-out infinite; }
+#ai-status.ai-status-success::before { background-image: url('assets/cats/cat-13.webp'); }
+#ai-status.ai-status-error::before { background-image: url('assets/cats/cat-10.webp'); }
+
+/* API 設定視窗：右上角探頭的貓 */
+.ai-dialog { position: relative; }
+.ai-dialog::before {
+    content: '';
+    position: absolute;
+    top: -46px;
+    right: 22px;
+    width: 72px;
+    height: 72px;
+    background: url('assets/cats/cat-5.webp') no-repeat center / contain;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #canvas-empty-state img,
+    #ai-status.ai-status-info::before { animation: none; }
+}
+
+/* 分頁按鈕的小貓圖示 */
+.tab-btn, .mobile-view-option { display: inline-flex; align-items: center; gap: 6px; }
+.tab-icon { width: 20px; height: 20px; flex-shrink: 0; transition: transform 0.2s ease; }
+.mobile-view-option .tab-icon { width: 18px; height: 18px; }
+.tab-btn:not(.active) .tab-icon { opacity: 0.75; }
+.tab-btn:hover .tab-icon,
+.tab-btn.active .tab-icon { transform: translateY(-1px) rotate(-6deg); }
