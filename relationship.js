@@ -530,15 +530,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        const generations = [];
+        // 世代編號可能因為資料錯誤（例如母子被寫成夫妻）而跳號；重新排成連續的 0、1、2…，
+        // 否則排版時查不到那一代的高度，位置會變成 NaN，整張圖排不出來
+        const usedGenerations = [...new Set(Object.keys(personsMap).map(id => generationMap.get(id)))].sort((a, b) => a - b);
+        const compact = new Map(usedGenerations.map((g, i) => [g, i]));
+        const generations = usedGenerations.map(() => []);
         Object.keys(personsMap).forEach(personId => {
-            const generation = generationMap.get(personId);
+            const generation = compact.get(generationMap.get(personId));
             personsMap[personId].generation = generation;
-            if (!generations[generation]) generations[generation] = [];
             generations[generation].push(personId);
         });
-        generations.forEach(genList => { if (genList) genList.sort((a, b) => a.localeCompare(b)); });
-        return generations.filter(g => g && g.length > 0);
+        generations.forEach(genList => genList.sort((a, b) => a.localeCompare(b)));
+        return generations;
     }
 
 
@@ -621,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
              }
         });
 
+        let previousChildrenMaxX = -Infinity;
         sortedFamilyUnits.forEach((fu, fuIdx) => {
             const marriage = person.marriages.find(m => m.id === fu.marriageId);
             if (!marriage) return;
@@ -691,6 +695,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     let firstChildCX = -1, lastChildCX = -1;
                     const childrenTotalActualEstimatedWidth = children.reduce((sum, c) => sum + (c.layoutData.subtreeWidth || c.width), 0) + (children.length > 1 ? (children.length - 1) * SIBLING_SPACING : 0);
                     let currentChildTargetX = fu.parentMidX - childrenTotalActualEstimatedWidth / 2;
+                    // 多段婚姻：這一段的孩子不能疊到前一段的孩子（含他們的後代）上，至少從前一段實際的最右邊再往右排
+                    if (previousChildrenMaxX > -Infinity) {
+                        currentChildTargetX = Math.max(currentChildTargetX, previousChildrenMaxX + FAMILY_UNIT_SPACING);
+                    }
                     let maxXInChildrenBlock = -Infinity;
                     children.forEach((child) => {
                         const childMaxX = calculateFinalPositions(child, personsMap, currentChildTargetX, generationYs, layout, positionedPersons);
@@ -704,6 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          }
                     });
                     currentMaxX = Math.max(currentMaxX, maxXInChildrenBlock);
+                    previousChildrenMaxX = Math.max(previousChildrenMaxX, maxXInChildrenBlock);
                     // 橫線要同時涵蓋父母的中點與所有子女：子女若已經因為婚姻被排在別處
                     // （例如表兄妹結婚），父母往下的線才接得上，不會斷開
                     if (firstChildCX !== -1 && lastChildCX !== -1) {

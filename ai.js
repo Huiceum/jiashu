@@ -75,6 +75,7 @@ tie {                             // 關係強弱標記：單向弧線箭頭，�
 - 親子關係只能寫在父母那段 relationship 的 children 裡。
 - 每個孩子原則上都有兩位親生父母，children 要寫在「兩位親生父母」那段 relationship 裡（見下方「補上不詳的親生父母」）。
 - 描述明確說某人性別不明、未知或不記得時，寫 gender: other。
+- 每段婚姻或伴侶關係的另一半都必須是另一個獨立的 person；絕對不能把某人的父母、祖父母或子女寫成他的伴侶。配偶是誰不確定時，新增一位「妻子（不詳）」或「丈夫（不詳）」，不要拿圖中已經有的人充當。
 - 同一個人不能同時出現在同一段 relationship 的 partners 和 children；一個人只能出現在一段 relationship 的 children（他自己的親生父母那段）。
 - 「阿嬤」「阿公」「爺爺」「奶奶」是父母那一代的上一代：例如「爸爸的媽媽（阿嬤）」要寫成 relationship { partners: [阿公或不詳的阿公, 阿嬤]; children: [爸爸, 爸爸的手足]; }，絕對不能把爸爸寫成阿嬤的伴侶。
 - 用拼音或英文當 id，例如 wang_daming、father、child1。
@@ -100,6 +101,7 @@ tie {                             // 關係強弱標記：單向弧線箭頭，�
   3. 除了嫁娶進來的配偶，每個人都和其他人相連，沒有孤立的人。
   4. 每一代都接得上下一代。
   5. 沒有人同時是同一段關係的伴侶和孩子，也沒有人變成自己的祖先。
+  6. 沒有任何一對伴侶其實是親子或祖孫。
 
 ## 健康狀況
 - 精神疾病與精神障礙一律寫 Disability: true，不可以寫成 chronic，即使描述說「長期」「慢性」或「定期回診」也一樣。例如思覺失調症、雙相情緒障礙症（躁鬱症）、憂鬱症、焦慮症、強迫症、創傷後壓力症候群、失智症、自閉症、注意力不足過動症、智能障礙。
@@ -532,6 +534,14 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
                 message: `${c} 是這段 relationship 某位伴侶的祖先，卻又被寫成他們的孩子，形成循環。請檢查世代關係。`
             });
         }));
+        rels.forEach(r => {
+            if (r.partners.length !== 2) return;
+            const [a, b] = r.partners;
+            if (isAncestor(a, b) || isAncestor(b, a)) issues.push({
+                lineNumber: r.lineNumber,
+                message: `${a} 和 ${b} 是親子（或祖孫），卻被寫成這段 relationship 的伴侶。很可能把某人的母親或父親誤當成他的配偶：請改成他真正的配偶（另外新增一個 person；不知道是誰就寫「妻子（不詳）」或「丈夫（不詳）」）。`
+            });
+        });
         return issues;
     }
 
@@ -547,7 +557,7 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
     // 排版時略過的循環或重複父母（例如手動在編輯器寫錯），在狀態列提醒
     document.addEventListener('ftdl-structure-warning', e => {
         const list = [...new Set(e.detail || [])];
-        if (list.length) setStatus(`家系圖有資料錯誤，已自動略過：${list.join('；')}。請到「編輯」頁修正。`, 'error');
+        if (list.length) setStatus(`家系圖可能有資料錯誤：${list.join('；')}。請到「編輯」頁修正。`, 'error');
     });
 
     // --- 聊天室（存在這個瀏覽器的 localStorage） ---
