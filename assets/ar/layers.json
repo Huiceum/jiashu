@@ -1,0 +1,293 @@
+{
+ "aspect": 1.643103448275862,
+ "depth": 0.4,
+ "ground_y": -0.8094827586206896,
+ "rooms": [
+  [
+   -0.43103448275862066,
+   0.6956896551724138,
+   0.39655172413793105,
+   0.39913793103448275
+  ],
+  [
+   -0.4224137931034483,
+   0.3629310344827586,
+   0.4103448275862069,
+   0.025
+  ],
+  [
+   -0.4275862068965517,
+   -0.016379310344827584,
+   0.41379310344827586,
+   -0.3646551724137931
+  ],
+  [
+   -0.4224137931034483,
+   -0.4060344827586207,
+   0.41724137931034483,
+   -0.7629310344827586
+  ]
+ ],
+ "layers": [
+  {
+   "name": "f1_picture",
+   "kind": "prop",
+   "z": 0.016
+  },
+  {
+   "name": "f1_cabinet",
+   "kind": "prop",
+   "z": 0.02
+  },
+  {
+   "name": "f1_shelf",
+   "kind": "prop",
+   "z": 0.024
+  },
+  {
+   "name": "f1_jars",
+   "kind": "prop",
+   "z": 0.028
+  },
+  {
+   "name": "f1_plant",
+   "kind": "prop",
+   "z": 0.064
+  },
+  {
+   "name": "f1_counter",
+   "kind": "prop",
+   "z": 0.072
+  },
+  {
+   "name": "f1_sofa",
+   "kind": "prop",
+   "z": 0.096
+  },
+  {
+   "name": "f1_tv",
+   "kind": "prop",
+   "z": 0.12
+  },
+  {
+   "name": "f4_peek",
+   "kind": "creature",
+   "z": 0.12
+  },
+  {
+   "name": "f1_b",
+   "kind": "creature",
+   "z": 0.144
+  },
+  {
+   "name": "f1_c",
+   "kind": "creature",
+   "z": 0.16
+  },
+  {
+   "name": "f1_fridge",
+   "kind": "prop",
+   "z": 0.168
+  },
+  {
+   "name": "f1_lamp",
+   "kind": "prop",
+   "z": 0.18
+  },
+  {
+   "name": "f3_c",
+   "kind": "creature",
+   "z": 0.2
+  },
+  {
+   "name": "f2_a",
+   "kind": "creature",
+   "z": 0.22
+  },
+  {
+   "name": "f3_a",
+   "kind": "creature",
+   "z": 0.224
+  },
+  {
+   "name": "f3_b",
+   "kind": "creature",
+   "z": 0.224
+  },
+  {
+   "name": "f1_a",
+   "kind": "creature",
+   "z": 0.264
+  },
+  {
+   "name": "f1_d",
+   "kind": "creature",
+   "z": 0.272
+  },
+  {
+   "name": "f4_c",
+   "kind": "creature",
+   "z": 0.272
+  },
+  {
+   "name": "f4_a",
+   "kind": "creature",
+   "z": 0.28
+  },
+  {
+   "name": "f2_bubble",
+   "kind": "prop",
+   "z": 0.288
+  },
+  {
+   "name": "f4_door",
+   "kind": "prop",
+   "z": 0.312
+  },
+  {
+   "name": "f2_table",
+   "kind": "prop",
+   "z": 0.34
+  },
+  {
+   "name": "f3_table",
+   "kind": "prop",
+   "z": 0.344
+  },
+  {
+   "name": "f4_table",
+   "kind": "prop",
+   "z": 0.36
+  },
+  {
+   "name": "f1_table",
+   "kind": "prop",
+   "z": 0.368
+  },
+  {
+   "name": "street_21",
+   "kind": "street",
+   "z": 0.45
+  },
+  {
+   "name": "street_17",
+   "kind": "street",
+   "z": 0.57
+  },
+  {
+   "name": "street_29",
+   "kind": "street",
+   "z": 0.62
+  },
+  {
+   "name": "street_13",
+   "kind": "street",
+   "z": 0.61
+  },
+  {
+   "name": "street_25",
+   "kind": "street",
+   "z": 0.45
+  },
+  {
+   "name": "street_28",
+   "kind": "street",
+   "z": 0.45
+  },
+  {
+   "name": "street_12",
+   "kind": "street",
+   "z": 0.62
+  },
+  {
+   "name": "street_24",
+   "kind": "street",
+   "z": 0.6
+  },
+  {
+   "name": "street_19",
+   "kind": "street",
+   "z": 0.645
+  },
+  {
+   "name": "street_22",
+   "kind": "street",
+   "z": 0.65
+  },
+  {
+   "name": "street_23",
+   "kind": "street",
+   "z": 0.86
+  },
+  {
+   "name": "street_18",
+   "kind": "street",
+   "z": 1.26
+  },
+  {
+   "name": "street_20",
+   "kind": "street",
+   "z": 1.3
+  },
+  {
+   "name": "street_14",
+   "kind": "street",
+   "z": 1.26
+  },
+  {
+   "name": "street_15",
+   "kind": "street",
+   "z": 1.26
+  },
+  {
+   "name": "street_16",
+   "kind": "street",
+   "z": 1.25
+  },
+  {
+   "name": "street_27",
+   "kind": "street",
+   "z": 1.27
+  },
+  {
+   "name": "street_26",
+   "kind": "street",
+   "z": 1.27
+  },
+  {
+   "name": "street_30",
+   "kind": "street",
+   "z": 1.3
+  },
+  {
+   "name": "passer_1",
+   "kind": "passer",
+   "z": 0.47
+  },
+  {
+   "name": "passer_14",
+   "kind": "passer",
+   "z": 0.64
+  },
+  {
+   "name": "passer_9",
+   "kind": "passer",
+   "z": 0.5
+  },
+  {
+   "name": "passer_11",
+   "kind": "passer",
+   "z": 0.68
+  },
+  {
+   "name": "passer_3",
+   "kind": "passer",
+   "z": 0.48
+  },
+  {
+   "name": "passer_8",
+   "kind": "passer",
+   "z": 0.62
+  }
+ ]
+}

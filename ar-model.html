@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家書 Jiashu｜公寓模型</title>
+<style>
+html, body { margin: 0; height: 100%; background: #FBF8F4; overflow: hidden; }
+canvas { display: block; touch-action: none; }
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js" } }</script>
+</head>
+<body>
+<script type="module">
+// 2.5D 公寓模型的預覽：拖曳旋轉；生物依 ?t 之外的時間做呼吸動畫
+import * as THREE from 'three';
+import { GLTFLoader } from './vendor/three/GLTFLoader.js';
+import { OrbitControls } from './vendor/three/OrbitControls.js';
+
+const q = new URLSearchParams(location.search);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.05, 20);
+const fit = () => (0.86 / Math.tan(THREE.MathUtils.degToRad(16))) * Math.max(1, 0.62 / (innerWidth / innerHeight));
+const yaw = Number(q.get('yaw') || 0), pitch = Number(q.get('pitch') || 0), d = fit() + 1.5;
+camera.position.set(Math.sin(yaw) * Math.cos(pitch) * d, Math.sin(pitch) * d, Math.cos(yaw) * Math.cos(pitch) * d);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, -0.14, 0.45);   // 看向建築與前方人行道的中心
+camera.position.add(controls.target);
+controls.minPolarAngle = 0.6; controls.maxPolarAngle = 2.5;
+const creatures = [];
+new GLTFLoader().load('assets/ar/apartment.glb', gltf => {
+    gltf.scene.updateMatrixWorld(true);
+    gltf.scene.traverse(o => {
+        if (o.isMesh && o.material.map) o.material.map.anisotropy = 8;
+        // 圖層彼此平行：固定依 z 由後往前畫，不能交給 three.js 依距離排序
+        if (o.isMesh && o.material.transparent) o.renderOrder = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()).z * 1000;
+        if (o.userData.kind === 'creature') creatures.push({ o, phase: creatures.length * 1.7 });
+    });
+    scene.add(gltf.scene);
+    window.modelReady = true;
+});
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+renderer.setAnimationLoop(t => {
+    for (const { o, phase } of creatures) {
+        const b = Math.sin(t / 700 + phase);
+        o.scale.set(1 - b * 0.012, 1 + b * 0.022, 1);
+    }
+    controls.update();
+    renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

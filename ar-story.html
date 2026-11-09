@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家書 Jiashu｜子女長大以後，家由誰來帶動？</title>
+<style>
+@font-face { font-family: 'Taipei Sans TC Beta'; src: url('fonts/TaipeiSansTCBeta-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Taipei Sans TC Beta'; src: url('fonts/TaipeiSansTCBeta-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+:root { --ink: #3B2F27; --soft: #6B5B4E; --paper: #FBF8F4; --amber: #D9954D; --mist: #DDD7D1; --sand: #F3E6D2; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font-family: 'Taipei Sans TC Beta', 'PingFang TC', sans-serif; }
+body:not(.ar) canvas { position: fixed; inset: 0; display: block; }
+body.ar, html:has(body.ar) { background: #000; }
+#ar-stage { position: fixed; inset: 0; display: none; overflow: hidden; }
+body.ar #ar-stage { display: block; }
+#ar-gate { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; background: var(--paper); text-align: center; }
+#ar-gate[hidden], #ar-hint[hidden] { display: none; }
+#ar-gate img { width: 150px; height: 150px; object-fit: contain; }
+#ar-gate h1 { font-size: 1.5rem; margin: 0; }
+#ar-gate p { margin: 0; color: var(--soft); line-height: 1.6; }
+#ar-start { font: inherit; font-weight: 700; font-size: 1.1rem; border: none; background: var(--amber); color: var(--ink); border-radius: 12px; padding: 12px 28px; cursor: pointer; }
+#ar-hint { position: fixed; left: 50%; top: 40%; transform: translateX(-50%); z-index: 10; background: rgba(251, 248, 244, .92); padding: 10px 18px; border-radius: 12px; font-weight: 700; white-space: nowrap; }
+body.ar #note { color: #fff; text-shadow: 0 1px 3px #000; z-index: 10; }
+body.ar #bar { z-index: 10; }
+.nav { font: inherit; font-size: 1.2rem; line-height: 1; border: none; background: var(--mist); color: var(--ink); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+#reset { font: inherit; font-size: .82rem; border: none; background: var(--sand); color: var(--ink); border-radius: 10px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+#note { position: fixed; left: 16px; top: 12px; font-size: .78rem; color: var(--soft); opacity: 0; transition: opacity .4s; pointer-events: none; }
+#note.on { opacity: 1; }
+#bar { position: fixed; left: 12px; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 12px; background: rgba(251, 248, 244, .92); padding: 8px 14px; border-radius: 14px; box-shadow: 0 3px 12px rgba(59, 47, 39, .14); }
+#play { font: inherit; font-weight: 700; border: none; background: var(--amber); color: var(--ink); border-radius: 10px; padding: 6px 14px; cursor: pointer; min-width: 62px; }
+#seek { flex: 1; accent-color: #D9954D; min-width: 0; }
+#time { font-size: .85rem; color: var(--soft); font-variant-numeric: tabular-nums; }
+#home { color: var(--soft); font-size: .85rem; text-decoration: none; white-space: nowrap; }
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/renderers/CSS3DRenderer.js": "./vendor/three/CSS3DRenderer.js" } }</script>
+</head>
+<body>
+<div id="ar-stage"></div>
+<div id="ar-gate" hidden>
+    <img src="assets/cats/home-vr.webp" alt="">
+    <h1>把手機對準海報</h1>
+    <p>按下開始後允許使用相機，<br>公寓會從海報上長出來。</p>
+    <button id="ar-start" type="button">開啟相機</button>
+    <p id="ar-msg" role="status"></p>
+</div>
+<div id="ar-hint" hidden>請把鏡頭對準整張海報</div>
+<div id="note">插圖與動態為示意，非個別家庭資料；統計結果為關聯，不代表因果</div>
+<div id="bar">
+    <button class="nav" id="prev" type="button" aria-label="上一段">‹</button>
+    <button id="play" type="button">暫停</button>
+    <button class="nav" id="next" type="button" aria-label="下一段">›</button>
+    <input id="seek" type="range" min="0" max="90" step="0.1" value="0" aria-label="播放進度">
+    <span id="time">0:00</span>
+    <button id="reset" type="button" hidden>回到導覽視角</button>
+    <a id="home" href="index.html#/">首頁</a>
+</div>
+<script type="module" src="story.js"></script>
+</body>
+</html>

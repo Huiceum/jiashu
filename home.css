@@ -1,0 +1,45 @@
+/* home.css：首頁入口與各路由要顯示的介面 */
+#home-view { display: none; }
+body[data-route="home"] #home-view { display: flex; flex-direction: column; flex: 1 1 100%; width: 100%; height: 100%; overflow-y: auto; box-sizing: border-box; padding: 40px clamp(20px, 5vw, 72px) 48px; background: var(--background-color); color: var(--text-color-primary); }
+body[data-route="home"] #main-app-content,
+body[data-route="home"] #assistant-mascot,
+body[data-route="home"] #assistant-bubble { display: none !important; }
+
+.home-head { text-align: center; margin-bottom: clamp(20px, 4vh, 44px); }
+.home-head h1 { font-size: clamp(2em, 4vw, 3.2em); margin: 0 0 6px; }
+.home-head p { margin: 0; font-size: clamp(1em, 1.6vw, 1.3em); color: var(--text-color-secondary); }
+
+.home-cards { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(18px, 2.5vw, 36px); width: 100%; max-width: 1500px; margin: 0 auto; }
+.home-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 420px; padding: 28px 20px; border-radius: 32px; color: var(--rs-ink); text-decoration: none; text-align: center; box-sizing: border-box; transition: transform .16s ease, box-shadow .16s ease; }
+a.home-card:hover { transform: translateY(-6px); box-shadow: 0 14px 30px rgba(59, 47, 39, .2); }
+a.home-card:focus-visible { outline: 3px solid var(--rs-ink); outline-offset: 3px; }
+.card-survey { background: var(--rs-apricot); }
+.card-genogram { background: var(--rs-sand); }
+.card-vr { background: var(--rs-mist); }
+.home-card.is-soon { cursor: not-allowed; opacity: .72; }
+.home-card-img { display: block; width: min(84%, 400px); aspect-ratio: 1; }
+.home-card-img img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.home-card-title { font-size: clamp(1.7em, 2.8vw, 2.6em); font-weight: 700; }
+.home-card-desc { font-size: clamp(1em, 1.3vw, 1.2em); color: var(--rs-ink-soft); }
+
+#home-link { color: inherit; text-decoration: none; font-weight: 700; font-size: .92em; padding: 6px 12px; margin-right: 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .45); white-space: nowrap; }
+#home-link:hover { background: rgba(255, 255, 255, .12); }
+
+/* 問卷只留畫布與結果，不顯示編輯器分頁與聊天助手 */
+body[data-route="survey"] #view-switcher,
+body[data-route="survey"] #mobile-view-switcher,
+body[data-route="survey"] #assistant-mascot,
+body[data-route="survey"] #assistant-bubble,
+body[data-route="survey"] #assistant-sheet,
+body[data-route="survey"] #canvas-empty-state { display: none !important; }
+
+@media (max-width: 760px) {
+    body[data-route="home"] #home-view { padding: 22px 16px 20px; }
+    .home-head { margin-bottom: 14px; }
+    .home-cards { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(150px, 1fr); gap: 12px; }
+    .home-card { min-height: 0; padding: 12px 16px; gap: 2px; border-radius: 24px; }
+    .home-card-img { width: 100%; flex: 1 1 0; min-height: 60px; aspect-ratio: auto; }
+    .home-card-title { font-size: 1.45em; }
+    .home-card-desc { font-size: .92em; }
+    #home-link { padding: 5px 9px; margin-right: 6px; font-size: .85em; }
+}

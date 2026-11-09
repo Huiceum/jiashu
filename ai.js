@@ -1219,4 +1219,40 @@ tie { from: wang_xiaojie; to: wang_daming; line: thin; label: 嫌囉嗦; }`;
             }
         });
     }
+    // --- 給家庭問卷（quiz.js）用的介面 ---
+    function drawFtdl(ftdl) {
+        const errors = loadIntoEditor(ftdl);
+        if (errors.length === 0 || errors.every(e => e.isolated)) {
+            executeBtn.disabled = false;
+            executeBtn.click();
+            return true;
+        }
+        return false;
+    }
+
+    // 用單次提示產生家系圖，不寫進聊天室；語法或關係有誤時請模型修正，finalize 可在載入前改寫 FTDL。成功畫出才回傳 ok: true
+    async function generateFromPrompt(prompt, { finalize = f => f } = {}) {
+        const contents = [{ role: 'user', parts: [{ text: prompt }] }];
+        setBusy(true, 'generate');
+        try {
+            let reply = await callGemini(contents);
+            let ftdl = finalize(extractFtdl(reply));
+            let errors = loadIntoEditor(ftdl);
+            for (let i = 0; i < (CONFIG.maxRepairAttempts ?? 1) && errors.length > 0 && !errors.every(e => e.isolated); i++) {
+                contents.push({ role: 'model', parts: [{ text: reply }] });
+                contents.push({ role: 'user', parts: [{ text: `上面的 FTDL 有以下問題，請修正後只輸出完整的 FTDL：\n${errors.map(e => `第 ${e.lineNumber} 行：${e.message}`).join('\n')}` }] });
+                reply = await callGemini(contents);
+                ftdl = finalize(extractFtdl(reply));
+                errors = loadIntoEditor(ftdl);
+            }
+            if (errors.length > 0 && !errors.every(e => e.isolated)) return { ok: false, errors };
+            executeBtn.disabled = false;
+            executeBtn.click();
+            return { ok: true, ftdl };
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    window.FTDLAI = { hasKey: () => !!getKey(), openSettings, drawFtdl, generateFromPrompt };
 });

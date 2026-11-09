@@ -484,3 +484,15 @@ body.dark-mode #person-tooltip .card-error { color: #F2A48C; }
 
 /* 縮放與匯出按鈕移到畫布右下角，左下角留給助手貓 */
 #canvas-zoom-controls { left: auto; right: 10px; }
+
+/* 手機：工具列放不下一排，避開左下角的助手貓，靠右換行 */
+@media (max-width: 760px) {
+    #canvas-zoom-controls {
+        left: calc(12px + var(--mascot-size) + 8px);
+        right: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    #canvas-zoom-controls .zoom-btn,
+    #canvas-zoom-controls .export-btn { flex: none; height: 28px; line-height: 26px; box-sizing: border-box; }
+}
