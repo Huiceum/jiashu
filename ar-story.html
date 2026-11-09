@@ -14,7 +14,10 @@ body.ar, html:has(body.ar) { background: #000; }
 #ar-stage { position: fixed; inset: 0; display: none; overflow: hidden; }
 body.ar #ar-stage { display: block; }
 #ar-gate { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; background: var(--paper); text-align: center; }
-#ar-gate[hidden], #ar-hint[hidden] { display: none; }
+#ar-gate[hidden], #ar-hint[hidden], #ar-start[hidden] { display: none; }
+#ar-progress { width: min(320px, 80vw); height: 12px; border-radius: 6px; background: var(--mist); overflow: hidden; }
+#ar-progress i { display: block; height: 100%; width: 0; background: var(--amber); border-radius: 6px; transition: width .15s; }
+#ar-label { font-variant-numeric: tabular-nums; }
 #ar-gate img { width: 150px; height: 150px; object-fit: contain; }
 #ar-gate h1 { font-size: 1.5rem; margin: 0; }
 #ar-gate p { margin: 0; color: var(--soft); line-height: 1.6; }
@@ -40,7 +43,9 @@ body.ar #bar { z-index: 10; }
     <img src="assets/cats/home-vr.webp" alt="">
     <h1>把手機對準海報</h1>
     <p>按下開始後允許使用相機，<br>公寓會從海報上長出來。</p>
-    <button id="ar-start" type="button">開啟相機</button>
+    <div id="ar-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
+    <p id="ar-label">載入中… 0%</p>
+    <button id="ar-start" type="button" hidden>開啟相機</button>
     <p id="ar-msg" role="status"></p>
 </div>
 <div id="ar-hint" hidden>請把鏡頭對準整張海報</div>
@@ -49,11 +54,42 @@ body.ar #bar { z-index: 10; }
     <button class="nav" id="prev" type="button" aria-label="上一段">‹</button>
     <button id="play" type="button">暫停</button>
     <button class="nav" id="next" type="button" aria-label="下一段">›</button>
-    <input id="seek" type="range" min="0" max="90" step="0.1" value="0" aria-label="播放進度">
+    <input id="seek" type="range" min="0" max="108" step="0.1" value="0" aria-label="播放進度">
     <span id="time">0:00</span>
     <button id="reset" type="button" hidden>回到導覽視角</button>
     <a id="home" href="index.html#/">首頁</a>
 </div>
+<script>
+// AR 的讀取進度：一打開網址就顯示，依實際下載的位元組計算（下載結果會留在瀏覽器快取，之後載入模組不必再抓）
+(function () {
+    if (!new URLSearchParams(location.search).has('ar')) return;
+    document.getElementById('ar-gate').hidden = false;
+    var bar = document.getElementById('ar-progress'), fill = bar.firstElementChild, label = document.getElementById('ar-label'), text = '載入中…';
+    window.arProgress = function (p, t) {
+        if (t !== undefined) text = t;
+        var n = Math.round(p * 100);
+        fill.style.width = n + '%'; bar.setAttribute('aria-valuenow', n);
+        label.textContent = text ? text + ' ' + n + '%' : '';
+    };
+    var sizes = {"vendor/three/three.module.js": 1272972, "vendor/three/GLTFLoader.js": 108521, "vendor/three/utils/BufferGeometryUtils.js": 31906, "vendor/three/CSS3DRenderer.js": 7804, "vendor/mindar/mindar-image-three.prod.js": 385065, "vendor/mindar/controller-mGt1s8dJ.js": 2199370, "vendor/mindar/ui-fBadYuor.js": 4552, "assets/ar/apartment.glb": 3423132, "assets/ar/poster.mind": 873396, "story.js": 22715}, total = 0, got = {};
+    Object.keys(sizes).forEach(function (f) { total += sizes[f]; got[f] = 0; });
+    function update() {
+        var sum = 0; Object.keys(got).forEach(function (f) { sum += Math.min(got[f], sizes[f]); });
+        window.arProgress(sum / total * .9, '載入中…');     // 下載佔 90%，其餘是初始化
+    }
+    Object.keys(sizes).forEach(function (f) {
+        fetch(f).then(function (r) {
+            var reader = r.body.getReader();
+            return (function pump() {
+                return reader.read().then(function (d) {
+                    if (d.done) { got[f] = sizes[f]; update(); return; }
+                    got[f] += d.value.length; update(); return pump();
+                });
+            })();
+        }).catch(function () { got[f] = sizes[f]; update(); });
+    });
+})();
+</script>
 <script type="module" src="story.js"></script>
 </body>
 </html>
