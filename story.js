@@ -79,14 +79,16 @@ const user = { yaw: 0, pitch: 0, zoom: 1, panX: 0, panY: 0 };
 
 // AR 與預覽同一套構圖：看板在房子上方，播放前與播放結束鏡頭拉近、房子回到畫面中心
 function applyCamera(t) {
-    board.position.set(0, BOARD.y, BOARD_Z);
-    board.scale.set(BOARD.w, BOARD.w / BOARD_ASPECT, 1);
+    const side = !AR && innerHeight < 500 && innerWidth / innerHeight > 1.3;   // 手機橫放的預覽：高度不夠，看板移到房子左邊
+    const bw = side ? 1.9 : BOARD.w;
+    board.position.set(side ? -1.65 : 0, side ? 0 : BOARD.y, BOARD_Z);
+    board.scale.set(bw, bw / BOARD_ASPECT, 1);
     if (AR) return;                             // 鏡頭由追蹤決定
     const c = centering(t), asp = innerWidth / innerHeight, tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const fitW = asp >= 1 ? 2.9 : 2.2, d0 = Math.max(3.4 * 1.02 / (2 * tan), fitW * 1.02 / (2 * tan * asp));
+    const fitW = asp >= 1 ? 2.9 : 2.2, d0 = side ? 2.45 * 1.02 / (2 * tan) : Math.max(3.4 * 1.02 / (2 * tan), fitW * 1.02 / (2 * tan * asp));
     const centerD = Math.max(2.4 / (2 * tan), 2.3 / (2 * tan * asp));
     const d = lerp(d0, centerD, c) * user.zoom, lz = .25, pitch = clamp(.08 + user.pitch, -.25, 1.25), yaw = user.yaw;
-    const X = user.panX, Y = lerp(.47, -.1, c) + user.panY;
+    const X = lerp(side ? -.85 : 0, 0, c) + user.panX, Y = lerp(side ? -.05 : .47, -.1, c) + user.panY;
     camera.position.set(X + Math.sin(yaw) * Math.cos(pitch) * d, Y + Math.sin(pitch) * d, lz + Math.cos(yaw) * Math.cos(pitch) * d);
     camera.lookAt(X, Y, lz);
     camera.aspect = asp;
@@ -303,6 +305,12 @@ document.getElementById('prev').addEventListener('click', () => jump(-1));
 document.getElementById('next').addEventListener('click', () => jump(1));
 addEventListener('keydown', e => { if (e.key === 'ArrowLeft') jump(-1); if (e.key === 'ArrowRight') jump(1); });
 
+function showTip(text) {
+    const tip = document.getElementById('tip');
+    tip.textContent = text; tip.classList.add('on');
+    setTimeout(() => tip.classList.remove('on'), 6000);
+}
+
 // 視角：單指或滑鼠拖曳旋轉；雙指縮放與平移；滾輪縮放
 if (!AR) {
 const cv = renderer.domElement, resetBtn = document.getElementById('reset'), pts = new Map();
@@ -327,6 +335,32 @@ const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; };
 cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 cv.addEventListener('wheel', e => { e.preventDefault(); user.zoom = clamp(user.zoom * Math.exp(e.deltaY * .001), .3, 2.2); touched(); }, { passive: false });
 resetBtn.addEventListener('click', () => { Object.assign(user, { yaw: 0, pitch: 0, zoom: 1, panX: 0, panY: 0 }); touched(); });
+showTip(matchMedia('(pointer: coarse)').matches ? '單指旋轉、雙指縮放，手機也可以橫放' : '拖曳旋轉、滾輪縮放');
+} else {
+// AR：雙指縮放與平移模型（以海報中心為基準），單指不做事，避免和拿手機的動作互相干擾
+const stageEl = document.getElementById('ar-stage'), resetBtn = document.getElementById('reset'), pts = new Map(), view = { zoom: 1, x: 0, y: 0 };
+resetBtn.textContent = '恢復大小';
+stageEl.style.touchAction = 'none';
+addEventListener('gesturestart', e => e.preventDefault(), { passive: false });       // iOS Safari 的整頁縮放
+const applyView = () => {
+    world.scale.setScalar(AR_SCALE * view.zoom); world.position.set(view.x, AR_Y * view.zoom + view.y, 0);
+    resetBtn.hidden = view.zoom === 1 && !view.x && !view.y;
+};
+let pinch = null;
+const pinchInfo = () => { const [a, b] = [...pts.values()]; return { dist: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+stageEl.addEventListener('pointerdown', e => { stageEl.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 2) pinch = pinchInfo(); });
+stageEl.addEventListener('pointermove', e => {
+    const p = pts.get(e.pointerId); if (!p) return;
+    p.x = e.clientX; p.y = e.clientY;
+    if (pts.size !== 2 || !pinch) return;
+    const n = pinchInfo();
+    view.zoom = clamp(view.zoom * n.dist / pinch.dist, .5, 4);
+    view.x = clamp(view.x + (n.x - pinch.x) / innerWidth, -1.5, 1.5); view.y = clamp(view.y - (n.y - pinch.y) / innerWidth, -1.5, 1.5);
+    pinch = n; applyView();
+});
+const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; };
+stageEl.addEventListener('pointerup', up); stageEl.addEventListener('pointercancel', up);
+resetBtn.addEventListener('click', () => { Object.assign(view, { zoom: 1, x: 0, y: 0 }); applyView(); });
 }
 if (document.fonts) document.fonts.load(`700 40px 'Taipei Sans TC Beta'`).then(() => { drawn = ''; });
 
@@ -335,8 +369,33 @@ function setupAR() {
     world.visible = false;
     window.arProgress(1, '準備完成');
     btn.hidden = false;
-    anchor.onTargetFound = () => { world.visible = true; hint.hidden = true; window.arFound = true; if (t < DUR) setPlay(true); };
-    anchor.onTargetLost = () => { hint.hidden = false; setPlay(false); };
+    const HINT = hint.textContent;
+    let running = false, busy = false, landscape = innerWidth > innerHeight, tipped = false, timer = 0;
+    // MindAR 在開相機時固定影像長寬，手機轉向後長寬對調，要重啟追蹤才對得準
+    async function restart() {
+        if (busy || !running) return;
+        busy = true; landscape = innerWidth > innerHeight;
+        setPlay(false); anchor.visible = false; anchor.group.visible = false;
+        hint.textContent = '正在調整畫面方向…'; hint.hidden = false;
+        try {
+            mindar.stop(); await mindar.start();
+            hint.textContent = HINT; hint.hidden = anchor.visible;
+        } catch (err) {
+            running = false; hint.hidden = true; gate.hidden = false; btn.hidden = true;
+            msg.innerHTML = '轉向後沒辦法重新開啟相機。請重新整理頁面。';
+        }
+        busy = false;
+        if (running && landscape !== innerWidth > innerHeight) restart();
+    }
+    addEventListener('resize', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { if (running && landscape !== innerWidth > innerHeight) restart(); }, 500);   // 等相機影像完成轉向
+    });
+    anchor.onTargetFound = () => {
+        world.visible = true; hint.hidden = true; window.arFound = true; if (t < DUR) setPlay(true);
+        if (!tipped) { tipped = true; showTip('雙指可以放大縮小，手機也可以橫放'); }
+    };
+    anchor.onTargetLost = () => { if (!busy) hint.hidden = false; setPlay(false); };
     btn.addEventListener('click', async () => {
         btn.hidden = true; msg.textContent = '';
         // 相機與辨識模型的啟動沒有進度事件，用緩動逼近 95%，完成時補滿
@@ -346,7 +405,7 @@ function setupAR() {
         try {
             await mindar.start();
             clearInterval(timer); window.arProgress(1, '完成');
-            gate.hidden = true; hint.hidden = false;
+            gate.hidden = true; hint.hidden = false; running = true; landscape = innerWidth > innerHeight;
         } catch (err) {
             clearInterval(timer); window.arProgress(0, '');
             btn.hidden = false;
@@ -375,7 +434,7 @@ Promise.all([new GLTFLoader().loadAsync('assets/ar/apartment.glb'), fetch('asset
     Object.assign(floor.material, { transparent: false, alphaTest: .5 });   // 走不透明佇列、最先畫，AR 視角很淺時路面才不會被地板蓋掉
     wall.position.set((WALL.l + WALL.r) / 2, m.ground_y + wallH / 2, seamZ); wall.renderOrder = -5000;
     floor.rotation.set(-Math.PI / 2, 0, Math.PI); floor.position.set((WALL.l + WALL.r) / 2, m.ground_y - .012, seamZ + floorD / 2); floor.renderOrder = -4999;
-    backdrop.add(wall, floor); world.add(backdrop);
+    backdrop.add(wall, floor); if (AR) world.add(backdrop);   // 白牆與地板只在 AR 用，遮住相機畫面
     // 每層開口前一片暗幕，用來讓其他房間變暗
     m.rooms.forEach(([l, tp, r, b]) => {
         const g = new THREE.PlaneGeometry(r - l, tp - b);
