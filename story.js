@@ -52,9 +52,23 @@ if (AR) {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, .05, 30);
 }
+// AR 穩定層：模型不直接跟追蹤結果，微小跳動用很慢的速度吸收，手機真的移動時才快速跟上
+const stage = new THREE.Group(), STAB = { pos: .006, rot: .012, slow: 1.2, fast: 20 };   // pos 以海報寬為單位，rot 為弧度
+const poseT = { p: new THREE.Vector3(), q: new THREE.Quaternion(), s: new THREE.Vector3() };
+let stageLocked = false, stageClock = 0;
+function stabilize(now) {
+    const dt = Math.min((now - stageClock) / 1000, .1); stageClock = now;
+    stage.visible = anchor.group.visible;
+    if (!anchor.group.visible) { stageLocked = false; return; }
+    anchor.group.matrix.decompose(poseT.p, poseT.q, poseT.s);
+    if (!stageLocked) { stage.position.copy(poseT.p); stage.quaternion.copy(poseT.q); stage.scale.copy(poseT.s); stageLocked = true; return; }
+    const motion = Math.max(stage.position.distanceTo(poseT.p) / poseT.s.x / STAB.pos, stage.quaternion.angleTo(poseT.q) / STAB.rot);
+    const a = 1 - Math.exp(-dt * lerp(STAB.slow, STAB.fast, smooth((motion - .7) / 3)));
+    stage.position.lerp(poseT.p, a); stage.quaternion.slerp(poseT.q, a); stage.scale.lerp(poseT.s, a);
+}
 // 模型的掛載點：AR 時縮小並放在海報上（海報寬＝1），一般模式就是原點
 const world = new THREE.Group();
-if (AR) { world.scale.setScalar(AR_SCALE); world.position.y = AR_Y; anchor.group.add(world); } else scene.add(world);
+if (AR) { world.scale.setScalar(AR_SCALE); world.position.y = AR_Y; stage.add(world); scene.add(stage); } else scene.add(world);
 
 const note = document.getElementById('note');
 const nodes = {}, creatures = [], shades = [], clones = [];
@@ -387,5 +401,6 @@ renderer.setAnimationLoop(now => {
     else if (q.has('t')) seek.value = t;
     timeEl.textContent = `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
     animate(t, now); applyCamera(t); updateBoard(t); updateNote(t);
+    if (AR) stabilize(now);
     renderer.render(scene, camera);
 });
