@@ -81,7 +81,7 @@ body.ar #to3d { display: inline; }
         fill.style.width = n + '%'; bar.setAttribute('aria-valuenow', n);
         label.textContent = text ? text + ' ' + n + '%' : '';
     };
-    var sizes = {"vendor/three/three.module.js": 1272972, "vendor/three/GLTFLoader.js": 108521, "vendor/three/utils/BufferGeometryUtils.js": 31906, "vendor/three/CSS3DRenderer.js": 7804, "vendor/mindar/mindar-image-three.prod.js": 385065, "vendor/mindar/controller-mGt1s8dJ.js": 2199370, "vendor/mindar/ui-fBadYuor.js": 4552, "assets/ar/apartment.glb": 3423132, "assets/ar/poster.mind": 890215, "story.js": 22715}, total = 0, got = {};
+    var sizes = {"vendor/three/three.module.js": 1272972, "vendor/three/GLTFLoader.js": 108521, "vendor/three/utils/BufferGeometryUtils.js": 31906, "vendor/three/CSS3DRenderer.js": 7804, "vendor/mindar/mindar-image-three.prod.js": 385065, "vendor/mindar/controller-mGt1s8dJ.js": 2199370, "vendor/mindar/ui-fBadYuor.js": 4552, "assets/ar/apartment.glb": 3423132, "assets/ar/poster.mind": 894425, "story.js": 22715}, total = 0, got = {};
     Object.keys(sizes).forEach(function (f) { total += sizes[f]; got[f] = 0; });
     function update() {
         var sum = 0; Object.keys(got).forEach(function (f) { sum += Math.min(got[f], sizes[f]); });
